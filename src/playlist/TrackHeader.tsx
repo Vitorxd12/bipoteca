@@ -81,6 +81,11 @@ export const TrackHeader = memo(function TrackHeader({
     e.preventDefault();
     const n = getProject().tracks.length;
     showMenu(e, [
+      {
+        label: kit ? "Abrir editor de kit" : "Trocar instrumento",
+        icon: kit ? <Drum /> : <Piano />,
+        onSelect: () => openSound(),
+      },
       { label: "Renomear", icon: <Pencil />, hint: "2× clique", onSelect: () => setRenaming(true) },
       { label: "Volume 100%", icon: <Volume2 />, onSelect: () => actions.updateTrack(track.id, { volume: 1 }) },
       { label: "Volume 80%", icon: <Volume2 />, onSelect: () => actions.updateTrack(track.id, { volume: 0.8 }) },
@@ -129,6 +134,80 @@ export const TrackHeader = memo(function TrackHeader({
   };
 
   const accent = kit ? "volt" : "uv";
+
+  if (narrow) {
+    // Celular: coluna estreita. Tocar no nome abre o menu (som, renomear, volume…).
+    return (
+      <div
+        className={cn(
+          "relative flex h-full border-b border-white/[0.04] transition-colors",
+          isOpen && "bg-white/[0.045]",
+          silenced && "opacity-55",
+        )}
+        style={{ height }}
+        onContextMenu={menu}
+        onPointerDown={() => useUi.getState().setZone("playlist")}
+      >
+        <div className={cn("w-1 shrink-0 rounded-r-full", kit ? "bg-volt-500" : "bg-uv-500")} />
+        <button
+          type="button"
+          onClick={(e) => menu(e)}
+          className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 pr-1 pl-1.5 text-left active:bg-white/[0.05]"
+          aria-label={`Trilha ${track.name}: opções`}
+        >
+          <InlineEdit
+            value={track.name}
+            onCommit={(name) => actions.updateTrack(track.id, { name })}
+            editing={renaming}
+            onEditingChange={setRenaming}
+            className="block text-[11px] leading-tight font-semibold"
+            inputClassName="text-[11px]"
+          />
+          <span className={cn("truncate text-[9px] leading-tight", kit ? "text-volt-300/80" : "text-uv-300/80")}>
+            {kit ? `Kit · ${track.kit.length}` : (preset?.name ?? "—")}
+          </span>
+        </button>
+        <div className="flex shrink-0 flex-col justify-center gap-1 pr-1">
+          <button
+            type="button"
+            onClick={() => actions.updateTrack(track.id, { muted: !track.muted })}
+            className={cn(
+              "h-5 w-5 rounded-md font-mono text-[9px] font-bold",
+              track.muted ? "bg-coral-500 text-ink-950" : "bg-white/[0.06] text-fg-faint",
+            )}
+            aria-pressed={track.muted}
+            aria-label="Mute"
+          >
+            M
+          </button>
+          <button
+            type="button"
+            onClick={() => actions.updateTrack(track.id, { solo: !track.solo })}
+            className={cn(
+              "h-5 w-5 rounded-md font-mono text-[9px] font-bold",
+              track.solo
+                ? kit
+                  ? "bg-volt-500 text-ink-950"
+                  : "bg-uv-500 text-ink-950"
+                : "bg-white/[0.06] text-fg-faint",
+            )}
+            aria-pressed={track.solo}
+            aria-label="Solo"
+          >
+            S
+          </button>
+        </div>
+        {warnVisible && drop && (
+          <span
+            key={drop.at}
+            className="absolute top-1 right-7 flex h-4 animate-pulse-warn items-center rounded-full bg-coral-500 px-1 font-mono text-[8px] font-bold text-ink-950"
+          >
+            -{drop.missing}
+          </span>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div

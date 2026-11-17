@@ -21,7 +21,7 @@ export const usePlaylistView = create<PlaylistView>((set) => ({
   scrollY: 0,
   // Celular começa mais afastado: cabe mais música na tela estreita.
   pxPerTick: typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches ? 0.08 : 0.17,
-  rowH: 72,
+  rowH: typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches ? 52 : 72,
   set: (p) =>
     set((s) => ({
       ...p,

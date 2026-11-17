@@ -36,13 +36,13 @@ function AddTrackButton() {
           type="button"
           onClick={toggle}
           className={cn(
-            "m-2 flex h-10 w-[calc(100%-16px)] items-center justify-center gap-2 rounded-xl border border-dashed text-xs font-medium transition",
+            "m-2 flex h-10 w-[calc(100%-16px)] items-center justify-center gap-2 max-md:m-1 max-md:h-9 max-md:w-[calc(100%-8px)] rounded-xl border border-dashed text-xs font-medium transition",
             open
               ? "border-volt-500/60 bg-volt-500/10 text-volt-300"
               : "border-white/15 text-fg-muted hover:border-volt-500/50 hover:bg-white/[0.03] hover:text-fg",
           )}
         >
-          <Plus className="size-3.5" /> Nova trilha
+          <Plus className="size-3.5" /> <span className="max-md:hidden">Nova trilha</span>
         </button>
       )}
     >
@@ -91,7 +91,7 @@ function AddTrackButton() {
 }
 
 const HEADER_W = 232;
-const HEADER_W_MOBILE = 132;
+const HEADER_W_MOBILE = 96;
 const RULER_H = 34;
 
 export function Playlist() {
@@ -188,8 +188,8 @@ export function Playlist() {
           gridTemplateRows: `${RULER_H}px 1fr`,
         }}
       >
-        <div className="flex items-center justify-between border-r border-b border-white/[0.06] bg-ink-900 px-3">
-          <span className={LABEL}>Trilhas</span>
+        <div className="flex items-center justify-between border-r border-b border-white/[0.06] bg-ink-900 px-3 max-md:justify-center max-md:px-1">
+          <span className={cn(LABEL, "max-md:hidden")}>Trilhas</span>
           <span className="font-mono text-[10px] text-fg-faint">
             {tracks.length}/{LIMITS.tracks}
           </span>

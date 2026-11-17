@@ -2,7 +2,7 @@
  * Peças básicas da moldura. Só classes Tailwind inline: estilos repetidos
  * viram constantes de string, nunca regras CSS.
  */
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
 import { cn } from "@/lib/utils";
 
 /** Vidro escuro: moldura (painéis, cabeçalhos, popovers). Grades ficam opacas. */
@@ -41,6 +41,7 @@ export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
   size?: "sm" | "md" | "lg";
   label: string;
   children: ReactNode;
+  ref?: Ref<HTMLButtonElement>;
 }
 
 export function IconButton({
@@ -50,11 +51,13 @@ export function IconButton({
   label,
   className,
   children,
+  ref,
   ...rest
 }: IconButtonProps) {
   const t = TONES[tone];
   return (
     <button
+      ref={ref}
       type="button"
       aria-label={label}
       title={label}

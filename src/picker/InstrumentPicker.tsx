@@ -1,84 +1,226 @@
 /**
- * Seletor de instrumento (T8): para a trilha de instrumento e para cada linha
- * do kit. Gestos:
- *  clicar num preset ........ ouve e marca (RF-64)
- *  duplo clique ............. usa na hora
- *  setas .................... navega e ouve · Enter usa · Esc fecha
- *  roda nas categorias ...... troca de categoria
+ * Seletor de som (T8).
+ *
+ * Trilha de instrumento: clicar ouve e marca; "Usar" (ou 2×) aplica.
+ *
+ * Linha de kit: o seletor vira uma sessão para o kit inteiro.
+ *  - à esquerda, todas as linhas do kit; clicar troca a linha que está sendo editada
+ *  - clicar num som já aplica na linha e toca (dá para ir testando no contexto)
+ *  - 2× num som aplica e passa para a próxima linha
+ *  - linhas com nome genérico ("Som 3") ou com o nome do som antigo são renomeadas
+ *  - "Desfazer tudo" volta como estava; "Pronto" vira um passo só no desfazer
+ * Teclado: setas navegam e ouvem · Enter aplica · Tab/Shift+Tab troca de linha · Esc fecha
  */
-import { Check, Drum, Piano, Search, X } from "lucide-react";
+import { Check, Drum, Piano, Play, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
-import { CATEGORY_LABELS, type PresetCategory } from "@/audio/engine";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CATEGORY_LABELS, GROUP_LABELS, type PercGroup, type PresetCategory, type PresetInfo } from "@/audio/engine";
 import { host } from "@/audio/host";
-import { allPresets, presetKey } from "@/audio/registry";
+import { allPresets, presetInfo, presetKey } from "@/audio/registry";
 import SpotlightCard from "@/components/SpotlightCard";
 import { ShineBorder } from "@/components/ui/shine-border";
 import { cn } from "@/lib/utils";
-import type { PresetRef } from "@/model/types";
-import { useProject } from "@/store/project";
+import type { PresetRef, Project } from "@/model/types";
+import { beginGesture, endGesture, useProject } from "@/store/project";
 import { useUi } from "@/store/ui";
 import { GLASS_STRONG, Kbd } from "@/ui/primitives";
 
-type Filter = PresetCategory | "todos";
+type Entry = { engine: string; preset: PresetInfo; key: string };
+type Group = PercGroup | "melodico";
+
+const GROUP_ORDER: Group[] = ["bumbo", "caixa", "prato", "perc", "fx", "melodico"];
+const groupLabel = (g: Group) => (g === "melodico" ? "Sons melódicos" : GROUP_LABELS[g]);
+const groupOf = (p: PresetInfo): Group => p.group ?? "melodico";
+
+function SoundCard({
+  entry,
+  picked,
+  current,
+  kitMode,
+  onClick,
+  onDoubleClick,
+}: {
+  entry: Entry;
+  picked: boolean;
+  current: boolean;
+  kitMode: boolean;
+  onClick: () => void;
+  onDoubleClick: () => void;
+}) {
+  const perc = !!entry.preset.group;
+  return (
+    <SpotlightCard
+      spotlightColor={perc ? "rgba(200, 255, 61, 0.25)" : "rgba(139, 108, 255, 0.32)"}
+      spotlightSize={180}
+      className={cn(
+        "cursor-pointer rounded-2xl transition-transform active:scale-[0.97]",
+        picked && "ring-2 ring-inset",
+        picked && (perc ? "ring-volt-500" : "ring-uv-400"),
+      )}
+      style={{ padding: 0 }}
+      onClick={onClick}
+      onDoubleClick={onDoubleClick}
+      data-key={entry.key}
+    >
+      <div className="relative flex h-full flex-col gap-0.5 p-3.5">
+        <div className="flex items-center gap-2">
+          <span
+            className={cn(
+              "h-2 w-2 shrink-0 rounded-full",
+              perc
+                ? "bg-volt-500 shadow-[0_0_8px_var(--color-volt-500)]"
+                : "bg-uv-500 shadow-[0_0_8px_var(--color-uv-500)]",
+            )}
+          />
+          <span className="truncate font-mono text-[9px] tracking-wider text-fg-faint uppercase">
+            {kitMode ? groupLabel(groupOf(entry.preset)) : CATEGORY_LABELS[entry.preset.category]}
+          </span>
+          {current && (
+            <span className="ml-auto flex items-center gap-1 rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-semibold text-fg-muted">
+              <Check className="size-2.5" /> atual
+            </span>
+          )}
+        </div>
+        <div className="text-[14px] font-semibold tracking-tight">{entry.preset.name}</div>
+        <div className="text-[11px] leading-snug text-fg-muted">{entry.preset.description}</div>
+      </div>
+    </SpotlightCard>
+  );
+}
 
 export function InstrumentPicker() {
   const target = useUi((s) => s.picker);
-  const close = useUi((s) => s.closePicker);
   const project = useProject((s) => s.project);
-
   const track = target ? project.tracks.find((t) => t.id === target.trackId) : undefined;
   const row = target?.type === "row" ? track?.kit.find((r) => r.id === target.rowId) : undefined;
+  const kitMode = target?.type === "row";
   const current: PresetRef | null = row ? row.preset : (track?.preset ?? null);
-  const isKitRow = target?.type === "row";
+  const targetKey = target ? (target.type === "row" ? target.rowId : target.trackId) : "";
 
-  const [filter, setFilter] = useState<Filter>("todos");
+  const [filter, setFilter] = useState<string>("todos");
   const [query, setQuery] = useState("");
-  const [picked, setPicked] = useState<string>("");
+  const [picked, setPicked] = useState("");
+  const session = useRef<Project | null>(null);
+  const grid = useRef<HTMLDivElement>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reabre limpo a cada alvo
+  // Abre a sessão (um passo só no desfazer) quando o seletor abre.
+  const isOpen = !!target;
   useEffect(() => {
-    if (!target) return;
+    if (isOpen && !session.current) {
+      session.current = useProject.getState().project;
+      beginGesture();
+      setQuery("");
+      setFilter("todos");
+    }
+  }, [isOpen]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: atualiza a marca ao trocar de alvo
+  useEffect(() => {
     setPicked(presetKey(current));
-    setQuery("");
-    setFilter(isKitRow ? "percussao" : "todos");
-  }, [target]);
+  }, [targetKey]);
 
-  const presets = useMemo(() => allPresets(), []);
-  const visible = presets.filter(
-    ({ preset }) =>
-      (filter === "todos" || preset.category === filter) &&
-      (!query || `${preset.name} ${preset.description}`.toLowerCase().includes(query.toLowerCase())),
+  const finish = (keep: boolean) => {
+    if (!keep && session.current) useProject.setState({ project: session.current });
+    session.current = null;
+    endGesture();
+    useUi.getState().closePicker();
+  };
+
+  const entries: Entry[] = useMemo(
+    () => allPresets().map(({ engine, preset }) => ({ engine, preset, key: `${engine}:${preset.id}` })),
+    [],
   );
-  const categories: Filter[] = ["todos", ...(Object.keys(CATEGORY_LABELS) as PresetCategory[])];
 
-  const choose = (key: string) => {
+  const tabs: { id: string; label: string }[] = kitMode
+    ? [{ id: "todos", label: "Todos" }, ...GROUP_ORDER.map((g) => ({ id: g, label: groupLabel(g) }))]
+    : [
+        { id: "todos", label: "Todos" },
+        ...(Object.keys(CATEGORY_LABELS) as PresetCategory[]).map((c) => ({ id: c, label: CATEGORY_LABELS[c] })),
+      ];
+
+  // Agrupa: no kit por família (percussão primeiro); no instrumento por categoria.
+  const sections = useMemo(() => {
+    const q = query.toLowerCase();
+    const visible = entries.filter(({ preset }) => {
+      const inTab =
+        filter === "todos" || (kitMode ? groupOf(preset) === filter : preset.category === (filter as PresetCategory));
+      return inTab && (!q || `${preset.name} ${preset.description}`.toLowerCase().includes(q));
+    });
+    const order: string[] = kitMode ? GROUP_ORDER : (Object.keys(CATEGORY_LABELS) as PresetCategory[]);
+    const keyOf = (e: Entry): string => (kitMode ? groupOf(e.preset) : e.preset.category);
+    return order
+      .map((g) => ({
+        id: g,
+        label: kitMode ? groupLabel(g as Group) : CATEGORY_LABELS[g as PresetCategory],
+        items: visible.filter((e) => keyOf(e) === g),
+      }))
+      .filter((s) => s.items.length);
+  }, [entries, filter, query, kitMode]);
+  const flat = sections.flatMap((s) => s.items);
+
+  const applyToRow = (key: string) => {
+    if (!track || !row) return;
     const [engine, preset] = key.split(":");
-    if (!engine || !preset || !target) return;
+    if (!engine || !preset) return;
     const ref = { engine, preset };
-    const actions = useProject.getState();
-    if (target.type === "track") actions.updateTrack(target.trackId, { preset: ref });
-    else actions.updateKitRow(target.trackId, target.rowId, { preset: ref });
-    close();
+    const oldName = presetInfo(row.preset)?.name;
+    const generic = /^Som \d+$/.test(row.name) || row.name === oldName;
+    useProject.getState().updateKitRow(track.id, row.id, {
+      preset: ref,
+      ...(generic ? { name: presetInfo(ref)?.name ?? row.name } : {}),
+    });
+  };
+
+  const goRow = (delta: number) => {
+    if (!track || !row) return;
+    const i = track.kit.findIndex((r) => r.id === row.id);
+    const next = track.kit[(i + delta + track.kit.length) % track.kit.length];
+    if (next) useUi.getState().openPicker({ type: "row", trackId: track.id, rowId: next.id });
   };
 
   const audition = (key: string) => {
     setPicked(key);
     const [engine, preset] = key.split(":");
     if (engine && preset) void host.previewPreset({ engine, preset });
+    if (kitMode) applyToRow(key);
+    grid.current?.querySelector(`[data-key="${key}"]`)?.scrollIntoView({ block: "nearest" });
   };
 
+  const choose = (key: string) => {
+    if (!target) return;
+    if (kitMode) {
+      applyToRow(key);
+      goRow(1);
+      return;
+    }
+    const [engine, preset] = key.split(":");
+    if (!engine || !preset) return;
+    useProject.getState().updateTrack(target.trackId, { preset: { engine, preset } });
+    finish(true);
+  };
+
+  // Recria o atalho a cada render, com o estado atual.
   useEffect(() => {
     if (!target) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement && e.key !== "Escape" && e.key !== "Enter" && !e.key.startsWith("Arrow"))
+      if (
+        e.target instanceof HTMLInputElement &&
+        !["Escape", "Enter", "Tab"].includes(e.key) &&
+        !e.key.startsWith("Arrow")
+      )
         return;
       e.stopPropagation();
-      if (e.key === "Escape") close();
-      else if (e.key === "Enter" && picked) choose(picked);
-      else if (e.key.startsWith("Arrow")) {
+      if (e.key === "Escape") finish(kitMode);
+      else if (e.key === "Enter" && picked) {
         e.preventDefault();
-        const keys = visible.map((v) => `${v.engine}:${v.preset.id}`);
+        if (kitMode) finish(true);
+        else choose(picked);
+      } else if (e.key === "Tab" && kitMode) {
+        e.preventDefault();
+        goRow(e.shiftKey ? -1 : 1);
+      } else if (e.key.startsWith("Arrow")) {
+        e.preventDefault();
+        const keys = flat.map((v) => v.key);
         const i = keys.indexOf(picked);
         const delta = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : e.key === "ArrowDown" ? 3 : -3;
         const next = keys[Math.max(0, Math.min(keys.length - 1, Math.max(i, 0) + delta))];
@@ -97,7 +239,7 @@ export function InstrumentPicker() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onPointerDown={(e) => e.target === e.currentTarget && close()}
+          onPointerDown={(e) => e.target === e.currentTarget && finish(kitMode)}
         >
           <motion.div
             initial={{ y: 24, scale: 0.94, opacity: 0, filter: "blur(8px)" }}
@@ -106,36 +248,37 @@ export function InstrumentPicker() {
             transition={{ type: "spring", stiffness: 380, damping: 30 }}
             className={cn(
               GLASS_STRONG,
-              "relative flex max-h-[min(720px,90vh)] w-[min(860px,96vw)] flex-col overflow-hidden",
+              "relative flex h-[min(760px,92vh)] flex-col overflow-hidden",
+              kitMode ? "w-[min(1080px,96vw)]" : "w-[min(880px,96vw)]",
             )}
           >
             <ShineBorder shineColor={["#8b6cff", "#c8ff3d", "#8b6cff"]} borderWidth={1.5} duration={10} />
             <header className="flex items-start gap-4 px-6 pt-6 pb-4">
               <div
                 className={cn(
-                  "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
-                  isKitRow ? "bg-volt-500 text-ink-950" : "bg-uv-500 text-ink-950",
+                  "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-ink-950",
+                  kitMode ? "bg-volt-500" : "bg-uv-500",
                 )}
               >
-                {isKitRow ? <Drum className="size-5" /> : <Piano className="size-5" />}
+                {kitMode ? <Drum className="size-5" /> : <Piano className="size-5" />}
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="font-display text-lg font-semibold tracking-tight">Escolher som</h2>
+                <h2 className="font-display text-lg font-semibold tracking-tight">
+                  {kitMode ? "Sons do kit" : "Escolher instrumento"}
+                </h2>
                 <p className="truncate text-[13px] text-fg-muted">
                   {track.name}
-                  {row && <span className="text-fg-faint"> › {row.name}</span>}
                   <span className="text-fg-faint">
-                    {" "}
-                    ·{" "}
-                    {isKitRow
-                      ? "um sintetizador só para esta linha"
+                    {" · "}
+                    {kitMode
+                      ? "cada linha tem o próprio som; clique num som para aplicar na linha selecionada"
                       : "um sintetizador toca todas as notas, acordes incluídos"}
                   </span>
                 </p>
               </div>
               <button
                 type="button"
-                onClick={close}
+                onClick={() => finish(kitMode)}
                 className="rounded-xl p-2 text-fg-faint transition hover:bg-white/5 hover:text-fg"
                 aria-label="Fechar"
               >
@@ -143,109 +286,136 @@ export function InstrumentPicker() {
               </button>
             </header>
 
-            <div className="flex items-center gap-2 px-6 pb-4">
-              <div className="flex flex-1 flex-wrap gap-1">
-                {categories.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setFilter(c)}
-                    className={cn(
-                      "h-8 rounded-full px-3.5 text-xs font-medium transition",
-                      filter === c
-                        ? "bg-fg text-ink-950 shadow-[0_0_20px_-6px_white]"
-                        : "bg-white/[0.04] text-fg-muted ring-1 ring-white/[0.06] ring-inset hover:text-fg",
-                    )}
-                  >
-                    {c === "todos" ? "Todos" : CATEGORY_LABELS[c]}
-                  </button>
-                ))}
-              </div>
-              <label className="flex h-8 w-44 items-center gap-2 rounded-full bg-black/30 px-3 ring-1 ring-white/[0.07] ring-inset focus-within:ring-uv-500/60">
-                <Search className="size-3.5 text-fg-faint" />
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Buscar"
-                  className="w-full bg-transparent text-xs outline-none placeholder:text-fg-faint"
-                />
-              </label>
-            </div>
-
-            <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-3 content-start gap-2 overflow-y-auto px-6 pb-4 [scrollbar-width:thin]">
-              {visible.map(({ engine, preset }) => {
-                const key = `${engine}:${preset.id}`;
-                const isPicked = key === picked;
-                const isCurrent = key === presetKey(current);
-                const perc = preset.category === "percussao" || preset.category === "efeitos";
-                return (
-                  <SpotlightCard
-                    key={key}
-                    spotlightColor={perc ? "rgba(200, 255, 61, 0.25)" : "rgba(139, 108, 255, 0.32)"}
-                    spotlightSize={200}
-                    className={cn(
-                      "cursor-pointer rounded-2xl transition-transform active:scale-[0.98]",
-                      isPicked && "ring-2 ring-inset",
-                      isPicked && (perc ? "ring-volt-500" : "ring-uv-400"),
-                    )}
-                    style={{ padding: 0 }}
-                    onClick={() => audition(key)}
-                    onDoubleClick={() => choose(key)}
-                  >
-                    <div className="relative flex h-full flex-col gap-1 p-4">
-                      <div className="flex items-center gap-2">
-                        <span
+            <div className="flex min-h-0 flex-1">
+              {kitMode && (
+                <aside className="flex w-60 shrink-0 flex-col border-r border-white/[0.06] px-3 pb-3">
+                  <div className="flex items-center gap-1.5 px-2 pb-2 text-[10px] font-semibold tracking-[0.14em] text-fg-faint uppercase">
+                    Linhas <Kbd>Tab</Kbd>
+                  </div>
+                  <div className="min-h-0 flex-1 space-y-1 overflow-y-auto [scrollbar-width:thin]">
+                    {track.kit.map((r) => {
+                      const sel = r.id === row?.id;
+                      return (
+                        <div
+                          key={r.id}
                           className={cn(
-                            "h-2 w-2 rounded-full",
-                            perc
-                              ? "bg-volt-500 shadow-[0_0_8px_var(--color-volt-500)]"
-                              : "bg-uv-500 shadow-[0_0_8px_var(--color-uv-500)]",
+                            "group/r flex w-full items-center gap-2 rounded-xl px-2.5 py-2 transition",
+                            sel ? "bg-volt-500 text-ink-950" : "hover:bg-white/[0.05]",
                           )}
-                        />
-                        <span className="font-mono text-[10px] tracking-wider text-fg-faint uppercase">
-                          {CATEGORY_LABELS[preset.category]}
-                        </span>
-                        {isCurrent && (
-                          <span className="ml-auto flex items-center gap-1 rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-semibold text-fg-muted">
-                            <Check className="size-2.5" /> atual
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[15px] font-semibold tracking-tight">{preset.name}</div>
-                      <div className="text-xs text-fg-muted">{preset.description}</div>
-                    </div>
-                  </SpotlightCard>
-                );
-              })}
-              {!visible.length && (
-                <p className="col-span-3 py-10 text-center text-sm text-fg-faint">Nada encontrado.</p>
+                        >
+                          <button
+                            type="button"
+                            className="min-w-0 flex-1 text-left"
+                            onClick={() => useUi.getState().openPicker({ type: "row", trackId: track.id, rowId: r.id })}
+                          >
+                            <span className="block truncate text-[13px] font-semibold">{r.name}</span>
+                            <span
+                              className={cn("block truncate text-[11px]", sel ? "text-ink-950/70" : "text-fg-faint")}
+                            >
+                              {presetInfo(r.preset)?.name}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void host.previewPreset(r.preset)}
+                            className={cn(
+                              "flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition",
+                              sel
+                                ? "bg-ink-950/15 hover:bg-ink-950/30"
+                                : "text-volt-400 opacity-0 group-hover/r:opacity-100 hover:bg-volt-500/20",
+                            )}
+                            title="Ouvir"
+                          >
+                            <Play className="size-3 fill-current" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </aside>
               )}
+
+              <div className="flex min-w-0 flex-1 flex-col">
+                <div className="flex items-center gap-2 px-6 pb-3">
+                  <div className="flex flex-1 flex-wrap gap-1">
+                    {tabs.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setFilter(t.id)}
+                        className={cn(
+                          "h-7 rounded-full px-3 text-[11px] font-medium transition",
+                          filter === t.id
+                            ? "bg-fg text-ink-950 shadow-[0_0_20px_-6px_white]"
+                            : "bg-white/[0.04] text-fg-muted ring-1 ring-white/[0.06] ring-inset hover:text-fg",
+                        )}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="flex h-8 w-40 items-center gap-2 rounded-full bg-black/30 px-3 ring-1 ring-white/[0.07] ring-inset focus-within:ring-uv-500/60">
+                    <Search className="size-3.5 text-fg-faint" />
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Buscar"
+                      className="w-full bg-transparent text-xs outline-none placeholder:text-fg-faint"
+                    />
+                  </label>
+                </div>
+
+                <div ref={grid} className="min-h-0 flex-1 overflow-y-auto px-6 pb-4 [scrollbar-width:thin]">
+                  {sections.map((sec) => (
+                    <section key={sec.id} className="mb-4">
+                      <h3 className="sticky top-0 z-10 -mx-1 mb-2 bg-ink-850/90 px-1 py-1 text-[10px] font-semibold tracking-[0.14em] text-fg-faint uppercase backdrop-blur">
+                        {sec.label}
+                      </h3>
+                      <div className="grid grid-cols-3 gap-2">
+                        {sec.items.map((e) => (
+                          <SoundCard
+                            key={e.key}
+                            entry={e}
+                            kitMode={kitMode}
+                            picked={e.key === picked}
+                            current={e.key === presetKey(current)}
+                            onClick={() => audition(e.key)}
+                            onDoubleClick={() => choose(e.key)}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  ))}
+                  {!sections.length && <p className="py-10 text-center text-sm text-fg-faint">Nada encontrado.</p>}
+                </div>
+              </div>
             </div>
 
             <footer className="flex items-center gap-3 border-t border-white/[0.06] px-6 py-4">
-              <span className="flex items-center gap-1.5 text-[11px] text-fg-faint">
-                <Kbd>clique</Kbd> ouve <Kbd>2×</Kbd> usa <Kbd>←↑↓→</Kbd> navega <Kbd>Enter</Kbd> usa
+              <span className="flex flex-wrap items-center gap-1.5 text-[11px] text-fg-faint">
+                <Kbd>clique</Kbd> {kitMode ? "aplica e ouve" : "ouve"} <Kbd>2×</Kbd>
+                {kitMode ? "aplica e vai para a próxima linha" : "usa"} <Kbd>←↑↓→</Kbd> navega
               </span>
               <div className="flex-1" />
               <button
                 type="button"
-                onClick={close}
+                onClick={() => finish(false)}
                 className="h-10 rounded-xl px-4 text-sm text-fg-muted ring-1 ring-white/10 transition hover:bg-white/5 hover:text-fg"
               >
-                Cancelar
+                {kitMode ? "Desfazer tudo" : "Cancelar"}
               </button>
               <button
                 type="button"
                 disabled={!picked}
-                onClick={() => choose(picked)}
+                onClick={() => (kitMode ? finish(true) : choose(picked))}
                 className={cn(
                   "h-10 rounded-xl px-5 text-sm font-semibold text-ink-950 transition active:scale-95 disabled:opacity-30",
-                  isKitRow
+                  kitMode
                     ? "bg-volt-500 shadow-[0_0_28px_-6px_var(--color-volt-500)] hover:bg-volt-400"
                     : "bg-uv-500 shadow-[0_0_28px_-6px_var(--color-uv-500)] hover:bg-uv-400",
                 )}
               >
-                Usar este som
+                {kitMode ? "Pronto" : "Usar este som"}
               </button>
             </footer>
           </motion.div>

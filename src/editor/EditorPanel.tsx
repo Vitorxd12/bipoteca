@@ -7,15 +7,23 @@ import { useEffect, useRef } from "react";
 import { presetInfo } from "@/audio/registry";
 import { cn } from "@/lib/utils";
 import { LIMITS } from "@/model/limits";
-import { SNAPS } from "@/model/music";
+import type { Snap } from "@/model/music";
 import { useProject } from "@/store/project";
 import { useTransport } from "@/store/transport";
 import { useUi } from "@/store/ui";
 import { InlineEdit } from "@/ui/InlineEdit";
-import { GLASS, IconButton, LABEL, Segmented } from "@/ui/primitives";
+import { GLASS, IconButton, LABEL } from "@/ui/primitives";
+import { SnapMenu, type SnapOption } from "@/ui/SnapMenu";
 import { KitEditor } from "./KitEditor";
 import { PianoRoll } from "./PianoRoll";
 import { fitPattern, useOpenPattern } from "./view";
+
+const EDITOR_SNAPS: SnapOption<Snap>[] = [
+  { value: "1/4", label: "1/4", hint: "Semínima · 4 por compasso", perBar: 4 },
+  { value: "1/8", label: "1/8", hint: "Colcheia · 8 por compasso", perBar: 8 },
+  { value: "1/16", label: "1/16", hint: "Semicolcheia · 16 por compasso", perBar: 16 },
+  { value: "1/32", label: "1/32", hint: "Fusa · 32 por compasso", perBar: 32 },
+];
 
 function LengthStepper({ patternId, bars }: { patternId: string; bars: number }) {
   const set = (b: number) => useProject.getState().setPatternLength(patternId, b);
@@ -124,11 +132,11 @@ export function EditorPanel() {
         >
           <Repeat className="size-3.5" /> Só o pattern
         </button>
-        <Segmented
+        <SnapMenu
           value={snap}
-          onChange={(s) => useUi.getState().setEditorSnap(s)}
           tone={kit ? "volt" : "uv"}
-          options={SNAPS.map((s) => ({ value: s, label: s, title: `Encaixe em ${s}` }))}
+          onChange={(v) => useUi.getState().setEditorSnap(v)}
+          options={EDITOR_SNAPS}
         />
         <LengthStepper patternId={pattern.id} bars={pattern.lengthBars} />
         <div className="mx-1 h-5 w-px bg-white/[0.07]" />

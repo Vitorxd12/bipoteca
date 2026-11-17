@@ -31,6 +31,8 @@ import { useUi } from "@/store/ui";
 import { alpha, C, FONT_SANS } from "@/theme";
 import { InlineEdit } from "@/ui/InlineEdit";
 import { EditorRuler } from "./EditorRuler";
+import { EditorScrollbar } from "./EditorScrollbar";
+import { KitPresetMenu } from "./KitPresetMenu";
 import { VelocityLane } from "./VelocityLane";
 import {
   EDITOR_RULER_H,
@@ -518,7 +520,9 @@ export function KitEditor({ track }: { track: Track }) {
         gridTemplateRows: `${EDITOR_RULER_H}px 1fr ${VELOCITY_H}px`,
       }}
     >
-      <div className="flex items-center justify-between border-r border-b border-white/[0.06] bg-ink-900 px-2">
+      <div className="flex items-center gap-2 border-r border-b border-white/[0.06] bg-ink-900 px-2">
+        <KitPresetMenu track={track} />
+        <div className="flex-1" />
         <span className="font-mono text-[10px] text-fg-faint">
           {track.kit.length}/{LIMITS.kitRows} sons
         </span>
@@ -565,8 +569,9 @@ export function KitEditor({ track }: { track: Track }) {
           />
         )}
       </div>
-      <div className="min-h-0 min-w-0">
+      <div className="relative min-h-0 min-w-0">
         <KitGrid track={track} />
+        <EditorScrollbar tone="volt" />
       </div>
       <div className="flex items-start justify-end border-t border-r border-white/[0.06] bg-ink-900 p-2">
         <span className="font-mono text-[9px] tracking-widest text-fg-faint uppercase">velocity</span>

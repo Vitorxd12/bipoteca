@@ -5,7 +5,7 @@
  *  duplo clique ....... renomeia
  *  botão direito ...... duplicar / apagar
  */
-import { Copy, Drum, Layers, Pencil, Piano, Trash2 } from "lucide-react";
+import { Copy, Drum, Layers, PanelLeftClose, Pencil, Piano, Plus, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import SpotlightCard from "@/components/SpotlightCard";
@@ -16,6 +16,7 @@ import { getProject, useProject } from "@/store/project";
 import { useUi } from "@/store/ui";
 import { InlineEdit } from "@/ui/InlineEdit";
 import { showMenu } from "@/ui/overlays";
+import { Popover } from "@/ui/Popover";
 import { GLASS, IconButton, LABEL } from "@/ui/primitives";
 
 function openInEditor(p: Pattern) {
@@ -135,6 +136,57 @@ function PatternItem({ p, uses, open }: { p: Pattern; uses: number; open: boolea
   );
 }
 
+/** "+" da biblioteca: escolhe a trilha que vai dar o som ao pattern novo. */
+function NewPatternButton() {
+  const tracks = useProject((s) => s.project.tracks);
+  return (
+    <Popover
+      width={260}
+      align="end"
+      trigger={({ toggle, ref, open }) => (
+        <IconButton label="Novo pattern" size="sm" tone="volt" active={open} onClick={toggle} ref={ref}>
+          <Plus />
+        </IconButton>
+      )}
+    >
+      {(close) => (
+        <div>
+          <div className="px-2.5 pt-1.5 pb-2 text-[10px] font-semibold tracking-[0.14em] text-fg-faint uppercase">
+            Novo pattern para
+          </div>
+          {tracks.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => {
+                const id = useProject.getState().createPattern(t.id);
+                if (id) useUi.getState().openPattern(id, t.id);
+                close();
+              }}
+              className={cn(
+                "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-[13px] transition",
+                t.kind === "kit" ? "hover:bg-volt-500/12" : "hover:bg-uv-500/15",
+              )}
+            >
+              {t.kind === "kit" ? (
+                <Drum className="size-3.5 text-volt-400" />
+              ) : (
+                <Piano className="size-3.5 text-uv-300" />
+              )}
+              <span className="flex-1 truncate font-medium">{t.name}</span>
+              <span className="text-[10px] text-fg-faint">{t.kind === "kit" ? "kit" : "instrumento"}</span>
+            </button>
+          ))}
+          {!tracks.length && <p className="px-2.5 py-3 text-xs text-fg-faint">Crie uma trilha primeiro.</p>}
+          <p className="border-t border-white/[0.06] px-2.5 pt-2 pb-1 text-[10px] leading-snug text-fg-faint">
+            O pattern fica na biblioteca. Arraste para a playlist quando quiser usar.
+          </p>
+        </div>
+      )}
+    </Popover>
+  );
+}
+
 export function PatternLibrary() {
   const project = useProject((s) => s.project);
   const openId = useUi((s) => s.openPatternId);
@@ -152,6 +204,11 @@ export function PatternLibrary() {
         <Layers className="size-3.5 text-fg-faint" />
         <span className={LABEL}>Patterns</span>
         <span className="font-mono text-[10px] text-fg-faint">{patterns.length}</span>
+        <div className="flex-1" />
+        <NewPatternButton />
+        <IconButton label="Esconder patterns (B)" size="sm" onClick={() => useUi.getState().toggleLibrary()}>
+          <PanelLeftClose />
+        </IconButton>
       </div>
       <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2 [scrollbar-color:var(--color-ink-600)_transparent] [scrollbar-width:thin]">
         <AnimatePresence initial={false}>

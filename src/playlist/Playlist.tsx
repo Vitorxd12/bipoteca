@@ -1,17 +1,100 @@
-import { Drum, Magnet, Piano, Plus, ZoomIn, ZoomOut } from "lucide-react";
+import { Drum, PanelLeftOpen, Piano, Plus, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { KIT_PRESETS } from "@/audio/presets";
 import { localPoint, wheelDelta } from "@/canvas/useCanvas";
-import StarBorder from "@/components/StarBorder";
-import { cn } from "@/lib/utils";
+import { clamp, cn } from "@/lib/utils";
 import { LIMITS } from "@/model/limits";
-import { useProject } from "@/store/project";
-import { useUi } from "@/store/ui";
-import { showMenu } from "@/ui/overlays";
-import { GLASS, IconButton, LABEL, Segmented } from "@/ui/primitives";
+import { TICKS_PER_BAR } from "@/model/types";
+import { songEndTicks, useProject } from "@/store/project";
+import { type PlaylistSnap, useUi } from "@/store/ui";
+import { HScrollbar } from "@/ui/HScrollbar";
+import { Popover } from "@/ui/Popover";
+import { GLASS, IconButton, LABEL } from "@/ui/primitives";
+import { SnapMenu, type SnapOption } from "@/ui/SnapMenu";
 import { PlaylistGrid } from "./PlaylistGrid";
 import { PlaylistRuler } from "./PlaylistRuler";
 import { TrackHeader } from "./TrackHeader";
-import { usePlaylistView, zoomAt } from "./view";
+import { PX_PER_TICK, usePlaylistView, zoomAt } from "./view";
+
+const SNAP_OPTIONS: SnapOption<PlaylistSnap>[] = [
+  { value: "bar", label: "Compasso", hint: "Clipes começam no início do compasso", perBar: 1 },
+  { value: "beat", label: "Tempo", hint: "4 posições por compasso", perBar: 4 },
+  { value: "1/8", label: "1/8", hint: "8 posições por compasso", perBar: 8 },
+  { value: "1/16", label: "1/16", hint: "16 posições por compasso", perBar: 16 },
+  { value: "off", label: "Livre", hint: "Sem encaixe", perBar: 0 },
+];
+
+/** Menu de nova trilha: instrumento, ou kit a partir de um kit pronto. */
+function AddTrackButton() {
+  const add = (kind: "instrument" | "kit", template?: string) => useProject.getState().addTrack(kind, template);
+  return (
+    <Popover
+      width={320}
+      trigger={({ toggle, ref, open }) => (
+        <button
+          ref={ref}
+          type="button"
+          onClick={toggle}
+          className={cn(
+            "m-2 flex h-10 w-[calc(100%-16px)] items-center justify-center gap-2 rounded-xl border border-dashed text-xs font-medium transition",
+            open
+              ? "border-volt-500/60 bg-volt-500/10 text-volt-300"
+              : "border-white/15 text-fg-muted hover:border-volt-500/50 hover:bg-white/[0.03] hover:text-fg",
+          )}
+        >
+          <Plus className="size-3.5" /> Nova trilha
+        </button>
+      )}
+    >
+      {(close) => (
+        <div className="space-y-1">
+          <button
+            type="button"
+            onClick={() => {
+              add("instrument");
+              close();
+            }}
+            className="flex w-full items-start gap-3 rounded-xl p-2.5 text-left transition hover:bg-uv-500/15"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-uv-500 text-ink-950">
+              <Piano className="size-4" />
+            </span>
+            <span>
+              <span className="block text-[13px] font-semibold">Instrumento</span>
+              <span className="block text-[11px] text-fg-faint">
+                Um sintetizador toca todas as notas, acordes incluídos
+              </span>
+            </span>
+          </button>
+          <div className="px-2.5 pt-2 pb-1 text-[10px] font-semibold tracking-[0.14em] text-fg-faint uppercase">
+            Kit · um som por linha
+          </div>
+          <div className="grid grid-cols-2 gap-1">
+            {KIT_PRESETS.map((k) => (
+              <button
+                key={k.id}
+                type="button"
+                onClick={() => {
+                  add("kit", k.id);
+                  close();
+                }}
+                className="flex items-start gap-2 rounded-xl p-2 text-left transition hover:bg-volt-500/12"
+              >
+                <Drum className="mt-0.5 size-3.5 shrink-0 text-volt-400" />
+                <span className="min-w-0">
+                  <span className="block truncate text-[12px] font-semibold">{k.name}</span>
+                  <span className="block text-[10px] text-fg-faint">
+                    {k.rows.length ? `${k.rows.length} sons` : "sem sons"}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </Popover>
+  );
+}
 
 const HEADER_W = 232;
 const RULER_H = 34;
@@ -20,6 +103,7 @@ export function Playlist() {
   const tracks = useProject((s) => s.project.tracks);
   const { scrollY, rowH } = usePlaylistView();
   const snap = useUi((s) => s.playlistSnap);
+  const libraryOpen = useUi((s) => s.libraryOpen);
   const headersRef = useRef<HTMLDivElement>(null);
   const [reorder, setReorder] = useState<{ id: string; y: number; target: number } | null>(null);
   const reorderRef = useRef<{ id: string; y: number; target: number } | null>(null);
@@ -69,37 +153,35 @@ export function Playlist() {
     window.addEventListener("pointerup", up);
   };
 
-  const addMenu = (e: React.MouseEvent) => {
-    const add = useProject.getState().addTrack;
-    showMenu(e, [
-      { label: "Trilha de instrumento", icon: <Piano />, hint: "1 som, acordes", onSelect: () => add("instrument") },
-      {
-        label: "Trilha de kit · bateria básica",
-        icon: <Drum />,
-        hint: "1 som por linha",
-        onSelect: () => add("kit", "drums"),
-      },
-      { label: "Trilha de kit · vazio", icon: <Drum />, onSelect: () => add("kit", "empty") },
-    ]);
+  // Largura da grade, para a barra de rolagem saber quanto cabe na tela.
+  const gridBox = useRef<HTMLDivElement>(null);
+  const [gridW, setGridW] = useState(800);
+  useEffect(() => {
+    const el = gridBox.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setGridW(el.clientWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const { scrollX, pxPerTick } = usePlaylistView();
+  const project = useProject((st) => st.project);
+  const songEnd = Math.max(songEndTicks(project), 16 * TICKS_PER_BAR);
+  const fitSong = () => {
+    const ppt = clamp((gridW - 30) / (songEnd + TICKS_PER_BAR), PX_PER_TICK.min, PX_PER_TICK.max);
+    usePlaylistView.getState().set({ pxPerTick: ppt, scrollX: -TICKS_PER_BAR * 0.15 });
   };
 
   return (
     <section className={cn(GLASS, "flex h-full min-h-0 flex-col overflow-hidden")}>
       <div className="flex h-11 shrink-0 items-center gap-2 border-b border-white/[0.06] px-3">
+        {!libraryOpen && (
+          <IconButton label="Mostrar patterns (B)" size="sm" tone="uv" onClick={() => useUi.getState().toggleLibrary()}>
+            <PanelLeftOpen />
+          </IconButton>
+        )}
         <span className={LABEL}>Playlist</span>
-        <span className="font-mono text-[10px] text-fg-faint">
-          {tracks.length}/{LIMITS.tracks} trilhas
-        </span>
         <div className="flex-1" />
-        <Magnet className="size-3.5 text-fg-faint" />
-        <Segmented
-          value={snap}
-          onChange={(s) => useUi.getState().setPlaylistSnap(s)}
-          options={[
-            { value: "bar", label: "Compasso", title: "Encaixe por compasso (Alt durante o arraste: livre)" },
-            { value: "beat", label: "Tempo", title: "Encaixe por tempo (Alt durante o arraste: livre)" },
-          ]}
-        />
+        <SnapMenu value={snap} options={SNAP_OPTIONS} onChange={(v) => useUi.getState().setPlaylistSnap(v)} />
         <div className="mx-1 h-5 w-px bg-white/[0.07]" />
         <IconButton label="Afastar (Ctrl+roda)" size="sm" onClick={() => zoomAt(200, 1 / 1.3)}>
           <ZoomOut />
@@ -113,23 +195,11 @@ export function Playlist() {
         className="grid min-h-0 flex-1"
         style={{ gridTemplateColumns: `${HEADER_W}px 1fr`, gridTemplateRows: `${RULER_H}px 1fr` }}
       >
-        <div className="flex items-center border-r border-b border-white/[0.06] bg-ink-900 px-2">
-          <StarBorder
-            as="button"
-            onClick={addMenu}
-            color="var(--color-volt-500)"
-            trailColor="var(--color-uv-500)"
-            radius={10}
-            thickness={1}
-            duration={5}
-            className="h-6 w-full"
-            backgroundColor="rgb(14 12 22)"
-            textColor="var(--color-fg)"
-          >
-            <span className="flex items-center justify-center gap-1 text-[11px] font-semibold">
-              <Plus className="size-3" /> Trilha
-            </span>
-          </StarBorder>
+        <div className="flex items-center justify-between border-r border-b border-white/[0.06] bg-ink-900 px-3">
+          <span className={LABEL}>Trilhas</span>
+          <span className="font-mono text-[10px] text-fg-faint">
+            {tracks.length}/{LIMITS.tracks}
+          </span>
         </div>
         <div className="min-w-0 overflow-hidden">
           <PlaylistRuler />
@@ -146,15 +216,7 @@ export function Playlist() {
                 <TrackHeader track={t} index={i} height={rowH} onReorderStart={onReorderStart} />
               </div>
             ))}
-            {tracks.length < LIMITS.tracks && (
-              <button
-                type="button"
-                onClick={addMenu}
-                className="flex h-12 w-full items-center gap-2 px-4 text-xs text-fg-faint transition hover:bg-white/[0.03] hover:text-fg"
-              >
-                <Plus className="size-3.5" /> Nova trilha
-              </button>
-            )}
+            {tracks.length < LIMITS.tracks && <AddTrackButton />}
           </div>
           {reorder && (
             <div
@@ -168,8 +230,24 @@ export function Playlist() {
             />
           )}
         </div>
-        <div className="min-h-0 min-w-0">
+        <div ref={gridBox} className="relative min-h-0 min-w-0">
           <PlaylistGrid />
+          <div className="pointer-events-none absolute right-3 bottom-2.5 left-3">
+            <HScrollbar
+              className="pointer-events-auto"
+              start={scrollX}
+              visible={gridW / pxPerTick}
+              total={songEnd + 4 * TICKS_PER_BAR}
+              onScroll={(x) => usePlaylistView.getState().set({ scrollX: x })}
+              onRange={(x, vis) =>
+                usePlaylistView.getState().set({
+                  pxPerTick: clamp(gridW / vis, PX_PER_TICK.min, PX_PER_TICK.max),
+                  scrollX: x,
+                })
+              }
+              onFit={fitSong}
+            />
+          </div>
         </div>
       </div>
     </section>

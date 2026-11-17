@@ -23,7 +23,7 @@ import { snapDown, snapRound } from "@/model/music";
 import { type Clip, type Pattern, PPQ, TICKS_PER_BAR } from "@/model/types";
 import { beginGesture, endGesture, getProject, useProject } from "@/store/project";
 import { useTransport } from "@/store/transport";
-import { useUi } from "@/store/ui";
+import { playlistSnapTicks, useUi } from "@/store/ui";
 import { alpha, C, FONT_SANS, kindColor } from "@/theme";
 import { showMenu } from "@/ui/overlays";
 import { libraryDrag, usePlaylistView, zoomAt } from "./view";
@@ -67,7 +67,7 @@ export function PlaylistGrid() {
   const copyGhost = useRef<Clip[]>([]);
   const wrap = useRef<HTMLDivElement>(null);
 
-  const step = snap === "bar" ? TICKS_PER_BAR : PPQ;
+  const step = playlistSnapTicks(snap);
 
   // ------------------------------------------------------------- desenho
 

@@ -13,7 +13,7 @@ import { snapRound } from "@/model/music";
 import { PPQ, TICKS_PER_BAR } from "@/model/types";
 import { beginGesture, endGesture, useProject } from "@/store/project";
 import { useTransport } from "@/store/transport";
-import { useUi } from "@/store/ui";
+import { playlistSnapTicks, useUi } from "@/store/ui";
 import { alpha, C, FONT_MONO } from "@/theme";
 import { usePlaylistView, zoomAt } from "./view";
 
@@ -113,7 +113,7 @@ export function PlaylistRuler() {
   );
 
   const tickAt = (x: number) => view.scrollX + x / view.pxPerTick;
-  const step = snap === "bar" ? TICKS_PER_BAR : PPQ;
+  const step = playlistSnapTicks(snap);
 
   const loopHit = (x: number): "start" | "end" | "body" | null => {
     // Loop desligado: a faixa só cria um loop novo.

@@ -46,7 +46,10 @@ const SECTIONS: { title: string; accent: string; rows: [string, string][] }[] = 
       ["botão direito arrastando", "apaga"],
       ["Alt + roda no toque", "velocity ±5%"],
       ["clique no nome da linha", "ouve o som"],
-      ["chip do som", "troca o sintetizador da linha"],
+      ["chip do som", "abre os sons do kit (todas as linhas)"],
+      ["botão Kits", "ouvir e carregar kits prontos; salvar o seu"],
+      ["no seletor: clique", "aplica na linha e toca"],
+      ["no seletor: Tab", "próxima linha"],
     ],
   },
   {
@@ -60,6 +63,7 @@ const SECTIONS: { title: string; accent: string; rows: [string, string][] }[] = 
       ["botão do meio arrastando", "navega livre"],
       ["Alt durante arraste", "desliga o encaixe"],
       ["divisória do editor", "arrastar · 2× tela cheia"],
+      ["barra de rolagem", "arrastar · pontas dão zoom · 2× enquadra"],
     ],
   },
 ];
@@ -73,7 +77,7 @@ const KEYS: [string, string][] = [
   ["Ctrl+C / Ctrl+V", "copiar / colar notas"],
   ["Ctrl+A", "selecionar tudo"],
   ["← →", "move notas pelo passo da grade"],
-  ["B", "biblioteca"],
+  ["B", "mostra/esconde os patterns"],
   ["E", "editor: split ↔ tela cheia"],
   ["Esc", "limpa seleção / fecha"],
 ];

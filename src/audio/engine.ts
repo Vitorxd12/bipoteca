@@ -24,7 +24,19 @@ export interface PresetInfo {
   defaultNote: number;
   /** Percussivo: a nota dura o próprio decaimento, a duração escrita é ignorada. */
   oneShot?: boolean;
+  /** Família dentro da percussão, para organizar o seletor dos kits. */
+  group?: PercGroup;
 }
+
+export type PercGroup = "bumbo" | "caixa" | "prato" | "perc" | "fx";
+
+export const GROUP_LABELS: Record<PercGroup, string> = {
+  bumbo: "Bumbos",
+  caixa: "Caixas e palmas",
+  prato: "Chimbais e pratos",
+  perc: "Percussão",
+  fx: "Efeitos",
+};
 
 export interface Instrument {
   /** Saída ligada no canal da trilha (ou da linha do kit). */

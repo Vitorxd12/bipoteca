@@ -32,7 +32,7 @@ function nextKitNote(rows: KitRow[]): number {
 
 function makeKitRows(template: KitTemplateId): KitRow[] {
   const rows: KitRow[] = [];
-  for (const t of KIT_TEMPLATES[template].rows) {
+  for (const t of KIT_TEMPLATES[template]?.rows ?? []) {
     rows.push({
       id: uid("r"),
       name: t.name,
@@ -71,6 +71,13 @@ export interface ProjectActions {
   removeKitRow: (trackId: string, rowId: string) => void;
 
   createPatternAt: (trackId: string, start: number) => string | null;
+  /** Pattern novo só na biblioteca, sem clipe (o usuário posiciona depois). */
+  createPattern: (trackId: string) => string | null;
+  /**
+   * Troca os sons do kit mantendo as notas MIDI das linhas por posição:
+   * as batidas já escritas continuam tocando, agora com os sons novos.
+   */
+  loadKit: (trackId: string, rows: { name: string; preset: PresetRef }[]) => void;
   renamePattern: (id: string, name: string) => void;
   duplicatePattern: (id: string) => string | null;
   removePattern: (id: string) => void;
@@ -252,6 +259,56 @@ export const useProject = create<ProjectState>()(
             clips: [...pr.clips, clip],
           }));
           return pattern.id;
+        },
+        createPattern: (trackId) => {
+          const p = get().project;
+          const track = p.tracks.find((t) => t.id === trackId);
+          if (!track) return null;
+          const pattern: Pattern = {
+            id: uid("p"),
+            name: nextPatternName(p, track.kind),
+            kind: track.kind,
+            lengthBars: track.kind === "kit" ? 1 : 2,
+            notes: [],
+            homeTrackId: trackId,
+          };
+          update((pr) => ({
+            ...pr,
+            patterns: { ...pr.patterns, [pattern.id]: pattern },
+            patternOrder: [...pr.patternOrder, pattern.id],
+          }));
+          return pattern.id;
+        },
+        loadKit: (trackId, rows) => {
+          const track = get().project.tracks.find((t) => t.id === trackId);
+          if (!track) return;
+          if (rows.length > LIMITS.kitRows) limitHit("kitRows");
+          const kit: KitRow[] = [];
+          for (const [i, r] of rows.slice(0, LIMITS.kitRows).entries()) {
+            const old = track.kit[i];
+            kit.push({
+              id: old?.id ?? uid("r"),
+              name: r.name,
+              preset: r.preset,
+              note: old?.note ?? nextKitNote([...track.kit, ...kit]),
+              volume: old?.volume ?? 0.8,
+              muted: false,
+            });
+          }
+          update((p) => {
+            // Linhas que sobraram somem junto com as notas delas.
+            const removed = new Set(track.kit.slice(kit.length).map((r) => r.note));
+            const patterns = { ...p.patterns };
+            if (removed.size) {
+              const ids = new Set(p.clips.filter((c) => c.trackId === trackId).map((c) => c.patternId));
+              for (const pat of Object.values(p.patterns)) if (pat.homeTrackId === trackId) ids.add(pat.id);
+              for (const id of ids) {
+                const pat = patterns[id];
+                if (pat) patterns[id] = { ...pat, notes: pat.notes.filter((n) => !removed.has(n.pitch)) };
+              }
+            }
+            return { ...p, patterns, tracks: p.tracks.map((t) => (t.id === trackId ? { ...t, kit } : t)) };
+          });
         },
         renamePattern: (id, name) =>
           update((p) => {

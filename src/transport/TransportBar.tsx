@@ -3,11 +3,10 @@
  *  Espaço ........ tocar/pausar      Enter ..... parar (volta ao início/loop)
  *  Ctrl+Z / Ctrl+Shift+Z ... desfazer / refazer
  */
-import { CircleHelp, Layers, PanelBottom, Pause, Play, Redo2, Repeat, Square, Timer, Undo2 } from "lucide-react";
+import { CircleHelp, Metronome, PanelBottom, Pause, Play, Redo2, Repeat, Square, Undo2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { host } from "@/audio/host";
 import GlassSurface from "@/components/GlassSurface";
-import GooeyNav from "@/components/GooeyNav";
 import GradientText from "@/components/GradientText";
 import { BorderBeam } from "@/components/ui/border-beam";
 import { cn } from "@/lib/utils";
@@ -57,13 +56,11 @@ function PositionDisplay() {
 
 export function TransportBar() {
   const playing = useTransport((s) => s.playing);
-  const mode = useTransport((s) => s.mode);
   const metronome = useTransport((s) => s.metronome);
   const loop = useProject((s) => s.project.loop);
   const name = useProject((s) => s.project.name);
   const canUndo = useHistory((s) => s.pastStates.length > 0);
   const canRedo = useHistory((s) => s.futureStates.length > 0);
-  const libraryOpen = useUi((s) => s.libraryOpen);
   const editorMode = useUi((s) => s.editorMode);
   const openPatternId = useUi((s) => s.openPatternId);
 
@@ -80,6 +77,8 @@ export function TransportBar() {
       distortionScale={-90}
       className="shrink-0"
     >
+      {/* Tinta escura própria: no modo fosco (Firefox/Safari) o GlassSurface clareia demais. */}
+      <div className="pointer-events-none absolute inset-0 -z-10 rounded-[20px] bg-ink-950/80 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.08)]" />
       <div className="flex w-full items-center gap-3 px-2">
         {/* Marca e projeto */}
         <div className="flex min-w-0 items-center gap-3">
@@ -149,34 +148,11 @@ export function TransportBar() {
             active={metronome}
             onClick={() => useTransport.getState().toggleMetronome()}
           >
-            <Timer />
+            <Metronome />
           </IconButton>
-          <div className="ml-1" title="O que toca: a música inteira ou só o pattern aberto (RF-12)">
-            <GooeyNav
-              items={[{ label: "Música" }, { label: "Pattern" }]}
-              activeIndex={mode === "song" ? 0 : 1}
-              onChange={(i) => {
-                if (i === 1 && !openPatternId) return;
-                useTransport.getState().setMode(i === 0 ? "song" : "pattern");
-              }}
-              size="sm"
-              color={mode === "song" ? "#8b6cff" : "#c8ff3d"}
-              activeTextColor="#08070d"
-              colors={["#8b6cff", "#c8ff3d", "#c4b5ff"]}
-              particleCount={10}
-            />
-          </div>
         </div>
 
         <div className="flex items-center">
-          <IconButton
-            label="Biblioteca de patterns"
-            active={libraryOpen}
-            tone="uv"
-            onClick={() => useUi.getState().toggleLibrary()}
-          >
-            <Layers />
-          </IconButton>
           <IconButton
             label={editorMode === "closed" ? "Abrir editor" : "Fechar editor"}
             active={editorMode !== "closed"}

@@ -13,6 +13,7 @@ import { isBlackKey, noteName } from "@/model/music";
 import { useUi } from "@/store/ui";
 import { alpha, C, FONT_MONO } from "@/theme";
 import { EditorRuler } from "./EditorRuler";
+import { EditorScrollbar } from "./EditorScrollbar";
 import { PianoGrid } from "./PianoGrid";
 import { VelocityLane } from "./VelocityLane";
 import { centerPiano, EDITOR_RULER_H, KEYS_W, openPattern, useEditorView, VELOCITY_H } from "./view";
@@ -151,8 +152,9 @@ export function PianoRoll({ trackId }: { trackId: string | null }) {
       <div ref={body} className="min-h-0 overflow-hidden">
         <PianoKeys trackId={trackId} />
       </div>
-      <div className="min-h-0 min-w-0">
+      <div className="relative min-h-0 min-w-0">
         <PianoGrid trackId={trackId} />
+        <EditorScrollbar tone="uv" />
       </div>
       <div className="flex items-start justify-end border-t border-r border-white/[0.06] bg-ink-900 p-2">
         <span className="font-mono text-[9px] tracking-widest text-fg-faint uppercase [writing-mode:vertical-rl] rotate-180">

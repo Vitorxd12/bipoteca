@@ -1,9 +1,10 @@
 import { create } from "zustand";
 import type { Snap } from "@/model/music";
-import { PPQ } from "@/model/types";
+import { PPQ, TICKS_PER_BAR } from "@/model/types";
+import { useTransport } from "./transport";
 
 export type EditorMode = "closed" | "split" | "full";
-export type PlaylistSnap = "bar" | "beat";
+export type PlaylistSnap = "bar" | "beat" | "1/8" | "1/16" | "off";
 /** Área que recebe os atalhos de teclado (Delete, Ctrl+D, setas...). */
 export type FocusZone = "playlist" | "editor" | "library";
 
@@ -76,8 +77,15 @@ export const useUi = create<UiState>((set, get) => ({
       zone: "editor",
       selectedNoteIds: s.openPatternId === patternId ? s.selectedNoteIds : [],
     })),
-  closeEditor: () => set({ editorMode: "closed" }),
-  setEditorMode: (editorMode) => set({ editorMode }),
+  // Editor fechado: o que toca é sempre a música.
+  closeEditor: () => {
+    useTransport.getState().setMode("song");
+    set({ editorMode: "closed", zone: "playlist" });
+  },
+  setEditorMode: (editorMode) => {
+    if (editorMode === "closed") get().closeEditor();
+    else set({ editorMode });
+  },
   setSplitRatio: (r) => set({ splitRatio: Math.min(0.85, Math.max(0.2, r)) }),
   toggleLibrary: () => set((s) => ({ libraryOpen: !s.libraryOpen })),
   setPlaylistSnap: (playlistSnap) => set({ playlistSnap }),
@@ -103,3 +111,19 @@ export const useUi = create<UiState>((set, get) => ({
 }));
 
 export const ui = () => useUi.getState();
+
+/** Passo de encaixe da playlist em ticks ("off" = livre, 1 tick). */
+export function playlistSnapTicks(s: PlaylistSnap): number {
+  switch (s) {
+    case "bar":
+      return TICKS_PER_BAR;
+    case "beat":
+      return PPQ;
+    case "1/8":
+      return PPQ / 2;
+    case "1/16":
+      return PPQ / 4;
+    default:
+      return 1;
+  }
+}

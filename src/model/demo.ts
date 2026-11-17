@@ -13,7 +13,7 @@ const note = (pitch: number, start: number, duration: number, velocity = 0.8): N
 });
 
 export function demoProject(): Project {
-  const kit: KitRow[] = KIT_TEMPLATES.drums.rows.map((r, i) => ({
+  const kit: KitRow[] = (KIT_TEMPLATES.drums?.rows ?? []).map((r, i) => ({
     id: uid("r"),
     name: r.name,
     preset: r.preset,

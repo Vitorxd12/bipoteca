@@ -64,7 +64,6 @@ class AudioHost {
   private master!: Tone.Volume;
   private tracks = new Map<string, TrackNode>();
   private metro: Tone.Synth | null = null;
-  private previewSlot: Slot | null = null;
   private previewDest: Tone.Gain | null = null;
 
   private playing = false;
@@ -482,10 +481,7 @@ class AudioHost {
 
   /** Pré-escuta de um preset no seletor, antes de confirmar (RF-64). */
   async previewPreset(ref: PresetRef): Promise<void> {
-    await this.ensureStarted();
-    if (!this.previewDest) return;
-    this.previewSlot = this.makeSlot(ref, this.previewDest, this.previewSlot);
-    const inst = await this.previewSlot.ready;
+    const inst = await this.previewInstrument(ref);
     const info = presetInfo(ref);
     if (!inst || !info) return;
     const t = this.now + 0.01;
@@ -499,6 +495,49 @@ class AudioHost {
       inst.noteOn(info.defaultNote + iv, 0.75, t + i * 0.07);
       inst.noteOff(info.defaultNote + iv, t + 0.9);
     });
+  }
+
+  /** Toca os sons de um kit em sequência e depois um compasso de batida (ouvir antes de carregar). */
+  async previewKit(rows: PresetRef[]): Promise<void> {
+    const insts = await Promise.all(rows.map((r) => this.previewInstrument(r)));
+    const t0 = this.now + 0.03;
+    const hit = (i: number, at: number, vel = 0.85) => {
+      const inst = insts[i];
+      const info = presetInfo(rows[i]);
+      if (!inst || !info) return;
+      inst.noteOn(info.defaultNote, vel, at);
+      inst.noteOff(info.defaultNote, at + 0.2);
+    };
+    for (let i = 0; i < rows.length; i++) hit(i, t0 + i * 0.16);
+    // Uma batida curta usando as três primeiras linhas, como as de qualquer kit.
+    const start = t0 + rows.length * 0.16 + 0.15;
+    const step = 0.125;
+    for (let s = 0; s < 16; s++) {
+      if (s % 8 === 0 || s === 11) hit(0, start + s * step);
+      if (s % 8 === 4 && rows.length > 1) hit(1, start + s * step);
+      if (s % 2 === 0 && rows.length > 2) hit(2, start + s * step, s % 4 ? 0.45 : 0.7);
+    }
+  }
+
+  /** Instrumentos de pré-escuta ficam num cache pequeno, ligados direto no master. */
+  private previewCache = new Map<string, Slot>();
+
+  private async previewInstrument(ref: PresetRef | undefined): Promise<Instrument | null> {
+    if (!ref) return null;
+    await this.ensureStarted();
+    if (!this.previewDest) return null;
+    const key = presetKey(ref);
+    let slot = this.previewCache.get(key);
+    if (!slot) {
+      slot = this.makeSlot(ref, this.previewDest);
+      this.previewCache.set(key, slot);
+      if (this.previewCache.size > 24) {
+        const [oldKey, old] = this.previewCache.entries().next().value as [string, Slot];
+        this.previewCache.delete(oldKey);
+        this.retire(old);
+      }
+    }
+    return slot.ready;
   }
 }
 

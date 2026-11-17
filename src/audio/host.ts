@@ -170,8 +170,19 @@ class AudioHost {
       })
       .catch((e: unknown) => {
         console.error(e);
-        const name = presetInfo(ref)?.name ?? ref.preset;
-        toast(`Não foi possível carregar "${name}". Os sons sampleados precisam de internet na primeira vez.`, "error");
+        const info = presetInfo(ref);
+        const why = e instanceof Error ? e.message : String(e);
+        const net = info?.sampled ? " Sons sampleados são baixados na primeira vez." : "";
+        toast(
+          `Não foi possível carregar "${info?.name ?? ref.preset}" (${why}).${net} Tento de novo quando você tocar.`,
+          "error",
+        );
+        // Marca para recriar na próxima reprodução ou pré-escuta.
+        if (slot.token === token) {
+          slot.key = "__falhou__";
+          this.hasFailed = true;
+          this.lastTracks = null;
+        }
         return null;
       });
     return slot;
@@ -279,8 +290,19 @@ class AudioHost {
     return a.tick + (now - a.time) / a.spt;
   }
 
+  private hasFailed = false;
+
+  /** Recria instrumentos que falharam ao carregar (rede instável). */
+  private retryFailed(): void {
+    if (!this.hasFailed) return;
+    this.hasFailed = false;
+    this.lastTracks = null;
+    this.sync(getProject());
+  }
+
   async play(fromTick?: number): Promise<void> {
     await this.ensureStarted();
+    this.retryFailed();
     const start = fromTick ?? useTransport.getState().cursor;
     this.halt();
     const spt = secondsPerTick(getProject().bpm);
@@ -528,6 +550,7 @@ class AudioHost {
   /** Nota curta: ao criar, mover ou clicar. */
   async previewNote(trackId: string, pitch: number, velocity = 0.8, seconds = 0.22): Promise<void> {
     await this.ensureStarted();
+    this.retryFailed();
     const { slot, play } = this.trackSlotFor(trackId, pitch);
     const inst = await slot?.ready;
     if (!inst) return;
@@ -585,6 +608,11 @@ class AudioHost {
     if (!this.previewDest) return null;
     const key = presetKey(ref);
     let slot = this.previewCache.get(key);
+    // Falhou antes (rede): tenta de novo.
+    if (slot && slot.key !== key) {
+      this.previewCache.delete(key);
+      slot = undefined;
+    }
     if (!slot) {
       slot = this.makeSlot(ref, this.previewDest);
       this.previewCache.set(key, slot);

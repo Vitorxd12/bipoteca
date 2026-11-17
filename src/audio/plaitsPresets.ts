@@ -37,11 +37,13 @@ const BASE: Omit<PlaitsPatch, "engine"> = {
   harmonics: 0.5,
   timbre: 0.5,
   morph: 0.5,
-  decay: 0.5,
+  // No modo sustentado, decay baixo faz o low pass gate fechar logo depois do soltar.
+  decay: 0.15,
   lpgColour: 0.5,
   sustained: true,
   attack: 0.004,
-  release: 0.15,
+  // Sustentados: soltura do envelope. Percussivos: fade ao soltar a nota.
+  release: 0.08,
   gain: 0.8,
 };
 
@@ -53,7 +55,7 @@ const DEFS: Def[] = [
     category: "baixo",
     description: "Quase senoidal, grave que se sente",
     note: 36,
-    patch: { engine: 0, harmonics: 0.0, timbre: 0.2, morph: 0.0, lpgColour: 0.0, release: 0.12, gain: 1 },
+    patch: { engine: 0, harmonics: 0.0, timbre: 0.2, morph: 0.0, lpgColour: 0.0, release: 0.05, gain: 1 },
   },
   {
     id: "bass-analog",
@@ -61,7 +63,7 @@ const DEFS: Def[] = [
     category: "baixo",
     description: "Serra com filtro e sub, gordo",
     note: 36,
-    patch: { engine: 0, harmonics: 0.25, timbre: 0.32, morph: 0.65, lpgColour: 0.3, release: 0.12 },
+    patch: { engine: 0, harmonics: 0.25, timbre: 0.32, morph: 0.65, lpgColour: 0.3, release: 0.05 },
   },
   {
     id: "bass-acid",
@@ -69,7 +71,7 @@ const DEFS: Def[] = [
     category: "baixo",
     description: "Filtro ressonante que morde",
     note: 36,
-    patch: { engine: 0, harmonics: 0.8, timbre: 0.42, morph: 0.4, lpgColour: 0.8, release: 0.08, gain: 0.7 },
+    patch: { engine: 0, harmonics: 0.8, timbre: 0.42, morph: 0.4, lpgColour: 0.8, release: 0.05, gain: 0.7 },
   },
   {
     id: "bass-fm",
@@ -77,7 +79,7 @@ const DEFS: Def[] = [
     category: "baixo",
     description: "Ataque metálico, corpo redondo",
     note: 36,
-    patch: { engine: 10, harmonics: 0.25, timbre: 0.35, morph: 0.2, lpgColour: 0.5, release: 0.1 },
+    patch: { engine: 10, harmonics: 0.25, timbre: 0.35, morph: 0.2, lpgColour: 0.5, release: 0.05 },
   },
   {
     id: "bass-pd",
@@ -85,7 +87,7 @@ const DEFS: Def[] = [
     category: "baixo",
     description: "Distorção de fase, áspero e moderno",
     note: 36,
-    patch: { engine: 1, harmonics: 0.3, timbre: 0.55, morph: 0.35, lpgColour: 0.4, release: 0.1, gain: 0.7 },
+    patch: { engine: 1, harmonics: 0.3, timbre: 0.55, morph: 0.35, lpgColour: 0.4, release: 0.05, gain: 0.7 },
   },
   {
     id: "bass-fold",
@@ -93,7 +95,7 @@ const DEFS: Def[] = [
     category: "baixo",
     description: "Wavefolder: grave com brilho de borracha",
     note: 36,
-    patch: { engine: 9, harmonics: 0.15, timbre: 0.35, morph: 0.55, lpgColour: 0.3, release: 0.1, gain: 0.8 },
+    patch: { engine: 9, harmonics: 0.15, timbre: 0.35, morph: 0.55, lpgColour: 0.3, release: 0.05, gain: 0.8 },
   },
   {
     id: "bass-pluck",
@@ -135,7 +137,17 @@ const DEFS: Def[] = [
     category: "baixo",
     description: "Pulso de videogame",
     note: 36,
-    patch: { engine: 7, harmonics: 0.0, timbre: 0.5, morph: 0.0, lpgColour: 0.2, release: 0.06, gain: 0.6 },
+    patch: {
+      engine: 7,
+      harmonics: 0.0,
+      timbre: 0.5,
+      morph: 0.0,
+      decay: 0.45,
+      lpgColour: 0.2,
+      sustained: false,
+      release: 0.05,
+      gain: 0.6,
+    },
   },
 
   // -------------------------------------------------------------- leads
@@ -187,7 +199,7 @@ const DEFS: Def[] = [
       morph: 0.5,
       lpgColour: 0.7,
       attack: 0.35,
-      release: 1.2,
+      release: 0.18,
       gain: 0.5,
     },
   },
@@ -204,7 +216,7 @@ const DEFS: Def[] = [
       morph: 0.4,
       lpgColour: 0.7,
       attack: 0.5,
-      release: 1.4,
+      release: 0.18,
       gain: 0.45,
     },
   },
@@ -221,7 +233,7 @@ const DEFS: Def[] = [
       morph: 0.4,
       lpgColour: 0.7,
       attack: 0.3,
-      release: 1.0,
+      release: 0.18,
       gain: 0.4,
     },
   },
@@ -297,7 +309,7 @@ const LEVEL: Record<string, number> = {
   "bass-fold": 0.64,
   "bass-pluck": 6,
   "bass-808": 2.06,
-  "bass-chip": 0.37,
+  "bass-chip": 1.88,
   "lead-va": 0.46,
   "lead-wt": 0.88,
   "lead-voice": 0.34,

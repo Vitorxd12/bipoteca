@@ -26,6 +26,9 @@ struct Slot {
     velocity: f32,
     gate: bool,
     level: f32,
+    /// Soltar a nota faz um fade de saída (a duração da nota manda).
+    cut: bool,
+    fade: f32,
     active: bool,
     age: u64,
     blocks: u32,
@@ -58,6 +61,8 @@ impl Synth {
                     velocity: 0.0,
                     gate: false,
                     level: 0.0,
+                    cut: false,
+                    fade: 1.0,
                     active: false,
                     age: 0,
                     blocks: 0,
@@ -113,6 +118,8 @@ impl Synth {
         s.note = note;
         s.velocity = velocity.clamp(0.0, 1.0);
         s.gate = true;
+        s.cut = false;
+        s.fade = 1.0;
         s.active = true;
         s.age = self.clock;
         s.blocks = 0;
@@ -124,8 +131,9 @@ impl Synth {
 
     fn note_off(&mut self, note: f32) {
         for s in self.slots.iter_mut() {
-            if s.active && s.gate && s.note == note {
+            if s.active && !s.cut && s.note == note {
                 s.gate = false;
+                s.cut = true;
             }
         }
     }
@@ -133,6 +141,7 @@ impl Synth {
     fn all_off(&mut self) {
         for s in self.slots.iter_mut() {
             s.gate = false;
+            s.cut = true;
         }
     }
 
@@ -160,8 +169,13 @@ impl Synth {
                 ..Default::default()
             };
             s.voice.render(&patch, &modulations, &mut s.out, &mut s.aux);
-            // No modo percussivo a velocity escala a saída.
-            let amp = if self.sustained { self.gain } else { self.gain * s.velocity * s.velocity };
+            // Soltar a nota faz um fade de saída nos dois modos: o low pass gate do
+            // Plaits sozinho deixa ~300 ms de cauda; o fade garante o corte no tempo.
+            if s.cut {
+                s.fade = (s.fade - self.release_step).max(0.0);
+            }
+            let vel = if self.sustained { 1.0 } else { s.velocity * s.velocity };
+            let amp = self.gain * vel * s.fade;
             let mut peak = 0.0f32;
             for (o, v) in self.out.iter_mut().zip(s.out.iter()) {
                 let x = v * amp;
@@ -170,7 +184,9 @@ impl Synth {
             }
             s.blocks = s.blocks.saturating_add(1);
             // Libera a voz quando solta e em silêncio.
-            if !s.gate && s.blocks > MIN_LIFE_BLOCKS && peak < 1.0e-4 {
+            if s.cut && s.fade <= 0.0 {
+                s.active = false;
+            } else if !s.gate && s.blocks > MIN_LIFE_BLOCKS && peak < 1.0e-4 {
                 s.silent += 1;
                 if s.silent > SILENT_BLOCKS {
                     s.active = false;

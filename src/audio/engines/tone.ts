@@ -17,7 +17,7 @@ interface Voice {
   allOff(time: number): void;
 }
 
-/** Ambiência curta: dá espaço ao som sem virar "efeito" (o preset já vem com ela). */
+/** Ambiência bem curta: dá ar ao som sem deixar rastro depois que a nota acaba. */
 function verb(decay: number, wet: number): Tone.Reverb {
   return new Tone.Reverb({ decay, wet, preDelay: 0.01 });
 }
@@ -89,7 +89,7 @@ function build(presetId: string): Voice {
           envelope: { attack: 0.01, decay: 0.2, sustain: 0.7, release: 0.25 },
         }),
         -16,
-        [new Tone.Filter(4200, "lowpass"), verb(1.6, 0.18)],
+        [new Tone.Filter(4200, "lowpass"), verb(0.6, 0.1)],
       );
     case "square-lead":
       return poly(
@@ -98,7 +98,7 @@ function build(presetId: string): Voice {
           envelope: { attack: 0.005, decay: 0.1, sustain: 0.6, release: 0.12 },
         }),
         -16,
-        [new Tone.FeedbackDelay({ delayTime: "8n.", feedback: 0.22, wet: 0.16 }), verb(1.4, 0.14)],
+        [verb(0.6, 0.08)],
       );
     case "glass-pad": {
       const chorus = new Tone.Chorus(0.6, 3.5, 0.6).start();
@@ -106,12 +106,12 @@ function build(presetId: string): Voice {
         new Tone.PolySynth(Tone.AMSynth, {
           harmonicity: 2.01,
           oscillator: { type: "fatsine", count: 3, spread: 18 } as Tone.OmniOscillatorOptions,
-          envelope: { attack: 0.8, decay: 0.6, sustain: 0.8, release: 1.8 },
+          envelope: { attack: 0.6, decay: 0.6, sustain: 0.8, release: 0.3 },
           modulation: { type: "triangle" },
-          modulationEnvelope: { attack: 1.2, decay: 0.5, sustain: 1, release: 1.5 },
+          modulationEnvelope: { attack: 1.2, decay: 0.5, sustain: 1, release: 0.3 },
         }),
         -14,
-        [chorus, verb(4, 0.32)],
+        [chorus, verb(1, 0.14)],
       );
     }
     case "warm-pad": {
@@ -119,10 +119,10 @@ function build(presetId: string): Voice {
       return poly(
         new Tone.PolySynth(Tone.Synth, {
           oscillator: { type: "fattriangle", count: 3, spread: 30 },
-          envelope: { attack: 0.5, decay: 0.4, sustain: 0.85, release: 1.4 },
+          envelope: { attack: 0.4, decay: 0.4, sustain: 0.85, release: 0.3 },
         }),
         -12,
-        [new Tone.Filter(2400, "lowpass"), chorus, verb(3.2, 0.28)],
+        [new Tone.Filter(2400, "lowpass"), chorus, verb(0.9, 0.12)],
       );
     }
     case "epiano":
@@ -131,12 +131,12 @@ function build(presetId: string): Voice {
           harmonicity: 3.01,
           modulationIndex: 12,
           oscillator: { type: "sine" },
-          envelope: { attack: 0.002, decay: 1.4, sustain: 0.25, release: 0.9 },
+          envelope: { attack: 0.002, decay: 1.4, sustain: 0.25, release: 0.2 },
           modulation: { type: "sine" },
-          modulationEnvelope: { attack: 0.002, decay: 0.5, sustain: 0.1, release: 0.6 },
+          modulationEnvelope: { attack: 0.002, decay: 0.5, sustain: 0.1, release: 0.2 },
         }),
         -12,
-        [new Tone.Tremolo(4.5, 0.18).start(), verb(1.8, 0.2)],
+        [new Tone.Tremolo(4.5, 0.18).start(), verb(0.7, 0.1)],
       );
     case "organ":
       return poly(
@@ -145,7 +145,7 @@ function build(presetId: string): Voice {
           envelope: { attack: 0.01, decay: 0.05, sustain: 1, release: 0.08 },
         }),
         -14,
-        [verb(1.6, 0.18)],
+        [verb(0.6, 0.08)],
       );
     case "pluck":
       return poly(
@@ -156,7 +156,7 @@ function build(presetId: string): Voice {
           filterEnvelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.2, baseFrequency: 300, octaves: 4 },
         }),
         -8,
-        [new Tone.FeedbackDelay({ delayTime: "8n", feedback: 0.18, wet: 0.14 }), verb(1.6, 0.2)],
+        [verb(0.6, 0.1)],
       );
 
     case "kick": {

@@ -54,6 +54,7 @@ export const plaitsEngine: InstrumentEngine = {
   presets: PLAITS_PRESETS,
   async create(ctx, presetId) {
     const patch = PLAITS_PATCHES[presetId];
+    const oneShot = !!PLAITS_PRESETS.find((p) => p.id === presetId)?.oneShot;
     if (!patch) throw new Error(`Preset desconhecido: ${presetId}`);
     const [wasm] = await Promise.all([loadWasm(), loadModule(ctx)]);
     // Cada instância recebe sua cópia dos bytes (o processor instancia o próprio WASM).
@@ -66,7 +67,10 @@ export const plaitsEngine: InstrumentEngine = {
     const instrument: Instrument = {
       output: node,
       noteOn: (note, velocity, time) => node.port.postMessage({ type: "on", note, velocity, time }),
-      noteOff: (note, time) => node.port.postMessage({ type: "off", note, time }),
+      // Sons de bateria tocam até o fim; os melódicos cortam no soltar.
+      noteOff: (note, time) => {
+        if (!oneShot) node.port.postMessage({ type: "off", note, time });
+      },
       releaseAll: (time) => node.port.postMessage({ type: "allOff", time }),
       activeVoices: () => active,
       dispose: () => {

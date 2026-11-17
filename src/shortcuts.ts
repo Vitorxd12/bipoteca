@@ -12,6 +12,7 @@ import {
   transposeSelected,
 } from "./editor/commands";
 import { getProject, redo, undo, useProject } from "./store/project";
+import { useRouter } from "./store/router";
 import { useUi } from "./store/ui";
 
 function typing(e: KeyboardEvent): boolean {
@@ -144,7 +145,15 @@ export function useShortcuts(): void {
       }
 
       if (!mod && k === "b") ui.toggleLibrary();
-      if (!mod && k === "e" && ui.openPatternId) ui.setEditorMode(ui.editorMode === "full" ? "split" : "full");
+      if (!mod && k === "e" && ui.openPatternId) {
+        // Alterna entre a playlist e o editor do pattern aberto.
+        if (useRouter.getState().screen.name === "pattern") ui.closeEditor();
+        else
+          ui.openPattern(
+            ui.openPatternId,
+            ui.editorTrackId ?? getProject().patterns[ui.openPatternId]?.homeTrackId ?? "",
+          );
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => {

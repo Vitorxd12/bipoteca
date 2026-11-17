@@ -7,7 +7,7 @@
  *  Esc / fora ............ fecha
  */
 import { BookmarkPlus, Drum, Package, Play, Sparkles, Trash2, User, X } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import type { PercGroup } from "@/audio/engine";
 import { host } from "@/audio/host";
@@ -21,7 +21,7 @@ import { useKits } from "@/store/kits";
 import { getProject, useProject } from "@/store/project";
 import { toast } from "@/store/toast";
 import { useUi } from "@/store/ui";
-import { GLASS_STRONG, Kbd } from "@/ui/primitives";
+import { GLASS, Kbd } from "@/ui/primitives";
 
 type Filter = "todos" | "samples" | "synth" | "user";
 
@@ -105,7 +105,7 @@ function KitCard({
             type="button"
             onClick={onDelete}
             title="Apagar kit salvo"
-            className="text-fg-faint opacity-0 transition group-hover/kit:opacity-100 hover:text-coral-400"
+            className="text-fg-faint opacity-0 transition group-hover/kit:opacity-100 hover:text-coral-400 pointer-coarse:opacity-100"
           >
             <Trash2 className="size-4" />
           </button>
@@ -216,27 +216,17 @@ export function KitBrowser() {
   };
 
   return (
-    <AnimatePresence>
+    <>
       {target && (target.mode === "create" || track) && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/55 p-6 backdrop-blur-[3px]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onPointerDown={(e) => e.target === e.currentTarget && close()}
-        >
+        <div className="h-full min-h-0">
           <motion.div
-            initial={{ y: 24, scale: 0.95, opacity: 0 }}
-            animate={{ y: 0, scale: 1, opacity: 1 }}
-            exit={{ y: 12, scale: 0.97, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 380, damping: 30 }}
-            className={cn(
-              GLASS_STRONG,
-              "relative flex h-[min(780px,92vh)] w-[min(1120px,96vw)] flex-col overflow-hidden",
-            )}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.16 }}
+            className={cn(GLASS, "relative flex h-full w-full flex-col overflow-hidden")}
           >
             <ShineBorder shineColor={["#c8ff3d", "#8b6cff", "#c8ff3d"]} borderWidth={1.5} duration={12} />
-            <header className="flex items-start gap-4 px-6 pt-6 pb-4">
+            <header className="flex items-start gap-3 px-4 pt-4 pb-3 md:gap-4 md:px-6 md:pt-6 md:pb-4">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-volt-500 text-ink-950">
                 <Drum className="size-5" />
               </div>
@@ -260,15 +250,15 @@ export function KitBrowser() {
               </button>
             </header>
 
-            <div className="flex min-h-0 flex-1">
-              <nav className="flex w-52 shrink-0 flex-col gap-1 border-r border-white/[0.06] px-3 pb-3">
+            <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+              <nav className="flex shrink-0 gap-1 overflow-x-auto border-b border-white/[0.06] px-3 pb-3 md:w-52 md:flex-col md:overflow-visible md:border-r md:border-b-0">
                 {filters.map((f) => (
                   <button
                     key={f.id}
                     type="button"
                     onClick={() => setFilter(f.id)}
                     className={cn(
-                      "flex items-center justify-between rounded-xl px-3 py-2 text-left text-[13px] font-medium transition",
+                      "flex shrink-0 items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-[13px] font-medium whitespace-nowrap transition",
                       filter === f.id
                         ? "bg-volt-500 text-ink-950"
                         : "text-fg-muted hover:bg-white/[0.05] hover:text-fg",
@@ -282,7 +272,7 @@ export function KitBrowser() {
                     </span>
                   </button>
                 ))}
-                <div className="mt-auto space-y-2 px-1 text-[11px] leading-relaxed text-fg-faint">
+                <div className="mt-auto hidden space-y-2 px-1 text-[11px] leading-relaxed text-fg-faint md:block">
                   <p>
                     <b className="text-fg-muted">Máquinas clássicas</b>: samples de domínio público de baterias
                     eletrônicas reais. Baixam na primeira vez.
@@ -291,8 +281,8 @@ export function KitBrowser() {
                 </div>
               </nav>
 
-              <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 [scrollbar-width:thin]">
-                <div className="grid grid-cols-2 gap-3">
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-3 pb-6 [scrollbar-width:thin] md:px-6 md:pt-0">
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                   {visible.map((k) => (
                     <KitCard
                       key={k.id}
@@ -312,7 +302,7 @@ export function KitBrowser() {
             </div>
 
             {target.mode === "replace" && track && (
-              <footer className="flex items-center gap-3 border-t border-white/[0.06] px-6 py-3.5">
+              <footer className="flex flex-wrap items-center gap-3 border-t border-white/[0.06] px-4 py-3 md:px-6 md:py-3.5">
                 {naming ? (
                   <form
                     className="flex flex-1 items-center gap-2"
@@ -360,8 +350,8 @@ export function KitBrowser() {
               </footer>
             )}
           </motion.div>
-        </motion.div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   );
 }

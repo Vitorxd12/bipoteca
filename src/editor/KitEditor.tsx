@@ -17,6 +17,7 @@ import { GripVertical, Package, Play, Plus, Trash2, Volume2, VolumeX } from "luc
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { host } from "@/audio/host";
 import { presetInfo } from "@/audio/registry";
+import { TouchTracker } from "@/canvas/touch";
 import { localPoint, roundRect, useCanvas, wheelDelta } from "@/canvas/useCanvas";
 import { usePlayhead } from "@/canvas/usePlayhead";
 import ElasticSlider from "@/components/ElasticSlider";
@@ -30,6 +31,8 @@ import { useTransport } from "@/store/transport";
 import { useUi } from "@/store/ui";
 import { alpha, C, FONT_SANS } from "@/theme";
 import { InlineEdit } from "@/ui/InlineEdit";
+import { showMenu } from "@/ui/overlays";
+import { useCompact } from "@/ui/useCompact";
 import { EditorRuler } from "./EditorRuler";
 import { EditorScrollbar } from "./EditorScrollbar";
 import { VelocityLane } from "./VelocityLane";
@@ -37,6 +40,7 @@ import {
   EDITOR_RULER_H,
   editorZoomAt,
   KIT_HEADER_W,
+  KIT_HEADER_W_MOBILE,
   KIT_ROW_H,
   localPlayhead,
   openPattern,
@@ -49,7 +53,8 @@ import {
 type Drag =
   | { kind: "paint"; mode: "add" | "remove"; visited: Set<string> }
   | { kind: "marquee"; x0: number; y0: number; x1: number; y1: number }
-  | { kind: "pan"; x0: number; y0: number; sx: number; sy: number };
+  | { kind: "pan"; x0: number; y0: number; sx: number; sy: number }
+  | { kind: "pinch" };
 
 function KitGrid({ track }: { track: Track }) {
   const view = useEditorView();
@@ -58,6 +63,7 @@ function KitGrid({ track }: { track: Track }) {
   const snap = useUi((s) => s.editorSnap);
   const step = snapTicks(snap);
   const drag = useRef<Drag | null>(null);
+  const touches = useRef(new TouchTracker());
   const hover = useRef<{ row: number; step: number } | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const rows = track.kit;
@@ -209,6 +215,16 @@ function KitGrid({ track }: { track: Track }) {
     const el = e.currentTarget;
     const { x, y } = localPoint(e, el);
     useUi.getState().setZone("editor");
+    if (e.pointerType === "touch") {
+      touches.current.down(e.pointerId, x, y);
+      el.setPointerCapture(e.pointerId);
+      // Dois dedos: pinça e rolagem (o primeiro dedo para de pintar).
+      if (touches.current.count >= 2) {
+        if (drag.current?.kind === "paint") endGesture();
+        drag.current = { kind: "pinch" };
+        return;
+      }
+    }
     if (e.button === 1) {
       e.preventDefault();
       el.setPointerCapture(e.pointerId);
@@ -242,6 +258,17 @@ function KitGrid({ track }: { track: Track }) {
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const { x, y } = localPoint(e, e.currentTarget);
+    if (e.pointerType === "touch") {
+      const pinch = touches.current.move(e.pointerId, x, y);
+      if (drag.current?.kind === "pinch") {
+        if (pinch) {
+          editorZoomAt(pinch.cx, pinch.scale);
+          const v = useEditorView.getState();
+          v.set({ scrollX: v.scrollX - pinch.dx / v.pxPerTick, kitScrollY: v.kitScrollY - pinch.dy });
+        }
+        return;
+      }
+    }
     const d = drag.current;
     if (!d) {
       const c = cellAt(x, y);
@@ -278,7 +305,14 @@ function KitGrid({ track }: { track: Track }) {
     }
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.pointerType === "touch") {
+      touches.current.up(e.pointerId);
+      if (drag.current?.kind === "pinch") {
+        if (touches.current.count === 0) drag.current = null;
+        return;
+      }
+    }
     const d = drag.current;
     drag.current = null;
     if (d?.kind === "paint") endGesture();
@@ -380,8 +414,28 @@ const KitRowHeader = memo(function KitRowHeader({
     actions.removeKitRow(track.id, row.id);
   };
 
+  const menu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    showMenu(e, [
+      { label: "Ouvir", icon: <Play />, onSelect: () => void host.previewNote(track.id, row.note, 0.9) },
+      {
+        label: "Trocar som",
+        icon: <Package />,
+        onSelect: () => useUi.getState().openPicker({ type: "row", trackId: track.id, rowId: row.id }),
+      },
+      {
+        label: row.muted ? "Ligar som" : "Silenciar",
+        icon: row.muted ? <Volume2 /> : <VolumeX />,
+        onSelect: () => actions.updateKitRow(track.id, row.id, { muted: !row.muted }),
+      },
+      "sep",
+      { label: "Remover linha", icon: <Trash2 />, danger: true, onSelect: () => void remove() },
+    ]);
+  };
+
   return (
     <div
+      onContextMenu={menu}
       className={cn(
         "group/row flex items-center gap-1.5 border-b border-white/[0.03] pr-2 pl-1",
         index % 2 ? "bg-ink-900" : "bg-ink-950",
@@ -393,7 +447,7 @@ const KitRowHeader = memo(function KitRowHeader({
       <button
         type="button"
         onPointerDown={(e) => onReorderStart(e, row.id)}
-        className="flex w-4 shrink-0 cursor-grab justify-center text-fg-faint opacity-0 transition group-hover/row:opacity-100 active:cursor-grabbing"
+        className="flex w-4 shrink-0 cursor-grab justify-center text-fg-faint opacity-0 transition group-hover/row:opacity-100 active:cursor-grabbing max-md:hidden"
         aria-label="Arrastar para reordenar"
       >
         <GripVertical className="size-3.5" />
@@ -424,7 +478,10 @@ const KitRowHeader = memo(function KitRowHeader({
       >
         {preset?.name ?? "—"}
       </button>
-      <div className="w-11 shrink-0" onDoubleClick={() => actions.updateKitRow(track.id, row.id, { volume: 0.8 })}>
+      <div
+        className="w-11 shrink-0 max-md:hidden"
+        onDoubleClick={() => actions.updateKitRow(track.id, row.id, { volume: 0.8 })}
+      >
         <ElasticSlider
           value={Math.round(row.volume * 100)}
           maxValue={100}
@@ -457,7 +514,7 @@ const KitRowHeader = memo(function KitRowHeader({
       <button
         type="button"
         onClick={() => void remove()}
-        className="flex h-6 w-5 shrink-0 items-center justify-center text-fg-faint opacity-0 transition group-hover/row:opacity-100 hover:text-coral-400"
+        className="flex h-6 w-5 shrink-0 items-center justify-center text-fg-faint opacity-0 transition group-hover/row:opacity-100 hover:text-coral-400 max-md:hidden"
         title="Remover linha"
       >
         <Trash2 className="size-3.5" />
@@ -467,6 +524,7 @@ const KitRowHeader = memo(function KitRowHeader({
 });
 
 export const KitEditor = memo(function KitEditor({ track }: { track: Track }) {
+  const compact = useCompact();
   const kitScrollY = useEditorView((s) => s.kitScrollY);
   const headers = useRef<HTMLDivElement>(null);
   const [reorder, setReorder] = useState<{ id: string; target: number } | null>(null);
@@ -515,7 +573,7 @@ export const KitEditor = memo(function KitEditor({ track }: { track: Track }) {
     <div
       className="grid min-h-0 flex-1"
       style={{
-        gridTemplateColumns: `${KIT_HEADER_W}px 1fr`,
+        gridTemplateColumns: `${compact ? KIT_HEADER_W_MOBILE : KIT_HEADER_W}px 1fr`,
         gridTemplateRows: `${EDITOR_RULER_H}px 1fr ${VELOCITY_H}px`,
       }}
     >

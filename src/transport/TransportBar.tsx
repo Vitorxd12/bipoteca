@@ -3,7 +3,7 @@
  *  Espaço ........ tocar/pausar      Enter ..... parar (volta ao início/loop)
  *  Ctrl+Z / Ctrl+Shift+Z ... desfazer / refazer
  */
-import { CircleHelp, Metronome, Pause, Play, Redo2, Repeat, Square, Undo2 } from "lucide-react";
+import { Metronome, Pause, Play, Redo2, Repeat, Square, Undo2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { host } from "@/audio/host";
 import GlassSurface from "@/components/GlassSurface";
@@ -11,9 +11,9 @@ import GradientText from "@/components/GradientText";
 import { BorderBeam } from "@/components/ui/border-beam";
 import { cn } from "@/lib/utils";
 import { formatPosition } from "@/model/music";
+import { NavBar } from "@/nav/NavBar";
 import { redo, undo, useHistory, useProject } from "@/store/project";
 import { useTransport } from "@/store/transport";
-import { useUi } from "@/store/ui";
 import { InlineEdit } from "@/ui/InlineEdit";
 import { IconButton } from "@/ui/primitives";
 import { BpmControl } from "./BpmControl";
@@ -39,7 +39,7 @@ function PositionDisplay() {
   }, [playing, cursor]);
   return (
     <div
-      className="flex h-10 min-w-[124px] flex-col justify-center rounded-xl bg-black/55 px-3 ring-1 ring-white/[0.06] ring-inset"
+      className="flex h-10 min-w-[124px] flex-col justify-center rounded-xl bg-black/55 px-3 max-md:min-w-[76px] max-md:px-2 ring-1 ring-white/[0.06] ring-inset"
       title="Posição: compasso.tempo.semicolcheia"
     >
       <span
@@ -49,7 +49,9 @@ function PositionDisplay() {
           playing ? "text-volt-400" : "text-fg",
         )}
       />
-      <span className="mt-0.5 font-mono text-[8px] tracking-[0.2em] text-fg-muted">COMP . TEMPO . 1/16</span>
+      <span className="mt-0.5 font-mono text-[8px] tracking-[0.2em] text-fg-muted max-md:hidden">
+        COMP . TEMPO . 1/16
+      </span>
     </div>
   );
 }
@@ -65,7 +67,7 @@ export function TransportBar() {
   return (
     <GlassSurface
       width="100%"
-      height={64}
+      height="auto"
       borderRadius={22}
       blur={16}
       brightness={22}
@@ -77,9 +79,9 @@ export function TransportBar() {
     >
       {/* Tinta escura própria: no modo fosco (Firefox/Safari) o GlassSurface clareia demais. */}
       <div className="pointer-events-none absolute inset-0 -z-10 rounded-[20px] bg-gradient-to-b from-ink-700/55 via-ink-850/50 to-ink-900/55 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.07)]" />
-      <div className="flex w-full items-center gap-3 px-2">
-        {/* Marca e projeto */}
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="flex w-full items-center gap-3 px-2 max-md:gap-1 max-md:px-0">
+        {/* Marca e projeto (só no desktop; no celular a tela é curta) */}
+        <div className="flex min-w-0 items-center gap-3 max-md:hidden">
           <GradientText
             colors={["#c8ff3d", "#8b6cff", "#c4b5ff", "#c8ff3d"]}
             animationSpeed={8}
@@ -105,10 +107,11 @@ export function TransportBar() {
           </div>
         </div>
 
-        <div className="flex flex-1 items-center justify-center gap-2">
+        <div className="flex flex-1 items-center justify-center gap-2 max-md:justify-between max-md:gap-1">
           <IconButton
             label="Parar (Enter) — volta ao início ou ao começo do loop"
             size="lg"
+            className="max-md:h-9 max-md:w-9"
             onClick={() => host.stop()}
           >
             <Square className="fill-current" />
@@ -134,6 +137,7 @@ export function TransportBar() {
             label={loop.enabled ? "Loop ligado (duplo clique na régua alterna)" : "Loop desligado"}
             size="lg"
             tone="volt"
+            className="max-md:h-9 max-md:w-9"
             active={loop.enabled}
             onClick={() => useProject.getState().setLoop({ enabled: !loop.enabled })}
           >
@@ -143,6 +147,7 @@ export function TransportBar() {
             label="Metrônomo"
             size="lg"
             tone="uv"
+            className="max-md:h-9 max-md:w-9"
             active={metronome}
             onClick={() => useTransport.getState().toggleMetronome()}
           >
@@ -150,9 +155,13 @@ export function TransportBar() {
           </IconButton>
         </div>
 
-        <div className="flex items-center">
-          <IconButton label="Gestos e atalhos (?)" onClick={() => useUi.getState().setHelpOpen(true)}>
-            <CircleHelp />
+        <div className="flex items-center max-md:hidden">
+          <NavBar variant="inline" />
+        </div>
+        {/* Desfazer fica à mão no celular. */}
+        <div className="flex md:hidden">
+          <IconButton label="Desfazer" onClick={undo} disabled={!canUndo}>
+            <Undo2 />
           </IconButton>
         </div>
       </div>

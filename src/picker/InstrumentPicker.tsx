@@ -12,7 +12,7 @@
  * Teclado: setas navegam e ouvem · Enter aplica · Tab/Shift+Tab troca de linha · Esc fecha
  */
 import { Check, Drum, Piano, Play, Search, X } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CATEGORY_LABELS, GROUP_LABELS, type PercGroup, type PresetCategory, type PresetInfo } from "@/audio/engine";
 import { host } from "@/audio/host";
@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import type { PresetRef, Project } from "@/model/types";
 import { beginGesture, endGesture, useProject } from "@/store/project";
 import { useUi } from "@/store/ui";
-import { GLASS_STRONG, Kbd } from "@/ui/primitives";
+import { GLASS, Kbd } from "@/ui/primitives";
 
 type Entry = { engine: string; preset: PresetInfo; key: string };
 type Group = PercGroup | "melodico";
@@ -253,28 +253,17 @@ export function InstrumentPicker() {
   });
 
   return (
-    <AnimatePresence>
+    <>
       {target && track && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/55 p-6 backdrop-blur-[3px]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onPointerDown={(e) => e.target === e.currentTarget && finish(kitMode)}
-        >
+        <div className="h-full min-h-0">
           <motion.div
-            initial={{ y: 24, scale: 0.94, opacity: 0, filter: "blur(8px)" }}
-            animate={{ y: 0, scale: 1, opacity: 1, filter: "blur(0px)" }}
-            exit={{ y: 12, scale: 0.97, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 380, damping: 30 }}
-            className={cn(
-              GLASS_STRONG,
-              "relative flex h-[min(760px,92vh)] flex-col overflow-hidden",
-              kitMode ? "w-[min(1080px,96vw)]" : "w-[min(880px,96vw)]",
-            )}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.16 }}
+            className={cn(GLASS, "relative flex h-full w-full flex-col overflow-hidden")}
           >
             <ShineBorder shineColor={["#8b6cff", "#c8ff3d", "#8b6cff"]} borderWidth={1.5} duration={10} />
-            <header className="flex items-start gap-4 px-6 pt-6 pb-4">
+            <header className="flex items-start gap-3 px-4 pt-4 pb-3 md:gap-4 md:px-6 md:pt-6 md:pb-4">
               <div
                 className={cn(
                   "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-ink-950",
@@ -307,20 +296,20 @@ export function InstrumentPicker() {
               </button>
             </header>
 
-            <div className="flex min-h-0 flex-1">
+            <div className="flex min-h-0 flex-1 flex-col md:flex-row">
               {kitMode && (
-                <aside className="flex w-60 shrink-0 flex-col border-r border-white/[0.06] px-3 pb-3">
-                  <div className="flex items-center gap-1.5 px-2 pb-2 text-[10px] font-semibold tracking-[0.14em] text-fg-faint uppercase">
+                <aside className="flex shrink-0 flex-col border-b border-white/[0.06] px-3 pb-3 md:w-60 md:border-r md:border-b-0">
+                  <div className="hidden items-center gap-1.5 px-2 pb-2 text-[10px] font-semibold tracking-[0.14em] text-fg-faint uppercase md:flex">
                     Linhas <Kbd>Tab</Kbd>
                   </div>
-                  <div className="min-h-0 flex-1 space-y-1 overflow-y-auto [scrollbar-width:thin]">
+                  <div className="flex min-h-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:thin] md:flex-col md:overflow-x-visible md:overflow-y-auto">
                     {track.kit.map((r) => {
                       const sel = r.id === row?.id;
                       return (
                         <div
                           key={r.id}
                           className={cn(
-                            "group/r flex w-full items-center gap-2 rounded-xl px-2.5 py-2 transition",
+                            "group/r flex w-40 shrink-0 items-center gap-2 rounded-xl px-2.5 py-2 transition md:w-full",
                             sel ? "bg-volt-500 text-ink-950" : "hover:bg-white/[0.05]",
                           )}
                         >
@@ -343,7 +332,7 @@ export function InstrumentPicker() {
                               "flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition",
                               sel
                                 ? "bg-ink-950/15 hover:bg-ink-950/30"
-                                : "text-volt-400 opacity-0 group-hover/r:opacity-100 hover:bg-volt-500/20",
+                                : "text-volt-400 opacity-0 group-hover/r:opacity-100 hover:bg-volt-500/20 pointer-coarse:opacity-100",
                             )}
                             title="Ouvir"
                           >
@@ -357,7 +346,7 @@ export function InstrumentPicker() {
               )}
 
               <div className="flex min-w-0 flex-1 flex-col">
-                <div className="flex items-center gap-2 px-6 pb-3">
+                <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-3 md:flex-nowrap md:px-6 md:pt-0">
                   <div className="flex flex-1 flex-wrap gap-1">
                     {tabs.map((t) => (
                       <button
@@ -375,7 +364,7 @@ export function InstrumentPicker() {
                       </button>
                     ))}
                   </div>
-                  <label className="flex h-8 w-40 items-center gap-2 rounded-full bg-black/30 px-3 ring-1 ring-white/[0.07] ring-inset focus-within:ring-uv-500/60">
+                  <label className="flex h-8 w-full items-center md:w-40 gap-2 rounded-full bg-black/30 px-3 ring-1 ring-white/[0.07] ring-inset focus-within:ring-uv-500/60">
                     <Search className="size-3.5 text-fg-faint" />
                     <input
                       value={query}
@@ -387,7 +376,7 @@ export function InstrumentPicker() {
                 </div>
 
                 {sources.length > 2 && (
-                  <div className="flex flex-wrap items-center gap-1 px-6 pb-3">
+                  <div className="flex flex-wrap items-center gap-1 px-4 pb-3 md:px-6">
                     <span className="mr-1 text-[10px] font-semibold tracking-[0.14em] text-fg-faint uppercase">
                       Origem
                     </span>
@@ -410,13 +399,13 @@ export function InstrumentPicker() {
                     ))}
                   </div>
                 )}
-                <div ref={grid} className="min-h-0 flex-1 overflow-y-auto px-6 pb-4 [scrollbar-width:thin]">
+                <div ref={grid} className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 [scrollbar-width:thin] md:px-6">
                   {sections.map((sec) => (
                     <section key={sec.id} className="mb-4">
                       <h3 className="sticky top-0 z-10 -mx-1 mb-2 bg-ink-850/90 px-1 py-1 text-[10px] font-semibold tracking-[0.14em] text-fg-faint uppercase backdrop-blur">
                         {sec.label}
                       </h3>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                         {sec.items.map((e) => (
                           <SoundCard
                             key={e.key}
@@ -436,8 +425,8 @@ export function InstrumentPicker() {
               </div>
             </div>
 
-            <footer className="flex items-center gap-3 border-t border-white/[0.06] px-6 py-4">
-              <span className="flex flex-wrap items-center gap-1.5 text-[11px] text-fg-faint">
+            <footer className="flex items-center gap-3 border-t border-white/[0.06] px-4 py-3 md:px-6 md:py-4">
+              <span className="hidden flex-wrap items-center gap-1.5 text-[11px] text-fg-faint md:flex">
                 <Kbd>clique</Kbd> {kitMode ? "aplica e ouve" : "ouve"} <Kbd>2×</Kbd>
                 {kitMode ? "aplica e vai para a próxima linha" : "usa"} <Kbd>←↑↓→</Kbd> navega
               </span>
@@ -464,8 +453,8 @@ export function InstrumentPicker() {
               </button>
             </footer>
           </motion.div>
-        </motion.div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   );
 }

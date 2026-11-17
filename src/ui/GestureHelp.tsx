@@ -1,10 +1,10 @@
 /** Folha de gestos e atalhos. Abre com "?" ou pelo botão na barra. */
 import { Hand, Keyboard, X } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useUi } from "@/store/ui";
-import { GLASS_STRONG, Kbd } from "./primitives";
+import { GLASS, Kbd } from "./primitives";
 
 const SECTIONS: { title: string; accent: string; rows: [string, string][] }[] = [
   {
@@ -55,6 +55,18 @@ const SECTIONS: { title: string; accent: string; rows: [string, string][] }[] = 
     ],
   },
   {
+    title: "Toque (celular/tablet)",
+    accent: "text-volt-400",
+    rows: [
+      ["pinça com dois dedos", "zoom e rolagem"],
+      ["arrastar no vazio", "rola"],
+      ["toque no vazio (piano roll)", "cria nota"],
+      ["dois toques no vazio (playlist)", "cria pattern"],
+      ["toque longo no clipe ou linha", "menu"],
+      ["arrastar na grade do kit", "pinta toques"],
+    ],
+  },
+  {
     title: "Navegação",
     accent: "text-fg",
     rows: [
@@ -64,7 +76,6 @@ const SECTIONS: { title: string; accent: string; rows: [string, string][] }[] = 
       ["Alt + roda", "zoom vertical (altura)"],
       ["botão do meio arrastando", "navega livre"],
       ["Alt durante arraste", "desliga o encaixe"],
-      ["divisória do editor", "arrastar · 2× tela cheia"],
       ["barra de rolagem", "arrastar · pontas dão zoom · 2× enquadra"],
     ],
   },
@@ -79,8 +90,8 @@ const KEYS: [string, string][] = [
   ["Ctrl+C / Ctrl+V", "copiar / colar notas"],
   ["Ctrl+A", "selecionar tudo"],
   ["← →", "move notas pelo passo da grade"],
-  ["B", "mostra/esconde os patterns"],
-  ["E", "editor: split ↔ tela cheia"],
+  ["B", "playlist ↔ patterns"],
+  ["E", "playlist ↔ editor"],
   ["Esc", "limpa seleção / fecha"],
 ];
 
@@ -101,21 +112,14 @@ export function GestureHelp() {
   }, [open, setOpen]);
 
   return (
-    <AnimatePresence>
+    <>
       {open && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/60 p-6 backdrop-blur-[3px]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onPointerDown={(e) => e.target === e.currentTarget && setOpen(false)}
-        >
+        <div className="h-full min-h-0">
           <motion.div
-            initial={{ y: 20, scale: 0.95, opacity: 0 }}
-            animate={{ y: 0, scale: 1, opacity: 1 }}
-            exit={{ y: 10, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 380, damping: 30 }}
-            className={cn(GLASS_STRONG, "max-h-[90vh] w-[min(1040px,96vw)] overflow-y-auto p-7")}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.16 }}
+            className={cn(GLASS, "h-full w-full overflow-y-auto p-5 md:p-7")}
           >
             <div className="mb-5 flex items-center gap-3">
               <Hand className="size-5 text-volt-400" />
@@ -129,7 +133,7 @@ export function GestureHelp() {
                 <X className="size-4" />
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-6 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
               {SECTIONS.map((s) => (
                 <section key={s.title}>
                   <h3 className={cn("mb-2 text-xs font-semibold tracking-wider uppercase", s.accent)}>{s.title}</h3>
@@ -158,8 +162,8 @@ export function GestureHelp() {
               </div>
             </div>
           </motion.div>
-        </motion.div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   );
 }

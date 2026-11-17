@@ -12,11 +12,12 @@ import { LIMITS } from "@/model/limits";
 import { isBlackKey, noteName } from "@/model/music";
 import { useUi } from "@/store/ui";
 import { alpha, C, FONT_MONO } from "@/theme";
+import { useCompact } from "@/ui/useCompact";
 import { EditorRuler } from "./EditorRuler";
 import { EditorScrollbar } from "./EditorScrollbar";
 import { PianoGrid } from "./PianoGrid";
 import { VelocityLane } from "./VelocityLane";
-import { centerPiano, EDITOR_RULER_H, KEYS_W, openPattern, useEditorView, VELOCITY_H } from "./view";
+import { centerPiano, EDITOR_RULER_H, KEYS_W, KEYS_W_MOBILE, openPattern, useEditorView, VELOCITY_H } from "./view";
 
 function PianoKeys({ trackId }: { trackId: string | null }) {
   const view = useEditorView();
@@ -134,6 +135,7 @@ function PianoKeys({ trackId }: { trackId: string | null }) {
 export const PianoRoll = memo(function PianoRoll({ trackId }: { trackId: string | null }) {
   const body = useRef<HTMLDivElement>(null);
   const patternId = useUi((s) => s.openPatternId);
+  const compact = useCompact();
 
   // Ao abrir outro pattern, centraliza nas notas dele.
   useEffect(() => {
@@ -143,7 +145,10 @@ export const PianoRoll = memo(function PianoRoll({ trackId }: { trackId: string 
   return (
     <div
       className="grid min-h-0 flex-1"
-      style={{ gridTemplateColumns: `${KEYS_W}px 1fr`, gridTemplateRows: `${EDITOR_RULER_H}px 1fr ${VELOCITY_H}px` }}
+      style={{
+        gridTemplateColumns: `${compact ? KEYS_W_MOBILE : KEYS_W}px 1fr`,
+        gridTemplateRows: `${EDITOR_RULER_H}px 1fr ${VELOCITY_H}px`,
+      }}
     >
       <div className="border-r border-b border-white/[0.06] bg-ink-900" />
       <div className="min-w-0 overflow-hidden">

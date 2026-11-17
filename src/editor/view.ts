@@ -23,7 +23,9 @@ export const EDITOR_PPT = { min: 0.08, max: 3 } as const;
 export const KEY_H = { min: 8, max: 30 } as const;
 export const KIT_ROW_H = 34;
 export const KEYS_W = 64;
+export const KEYS_W_MOBILE = 42;
 export const KIT_HEADER_W = 320;
+export const KIT_HEADER_W_MOBILE = 176;
 export const VELOCITY_H = 78;
 export const EDITOR_RULER_H = 26;
 

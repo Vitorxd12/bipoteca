@@ -5,7 +5,7 @@
  *  duplo clique ....... renomeia
  *  botão direito ...... duplicar / apagar
  */
-import { Copy, Drum, Layers, PanelLeftClose, Pencil, Piano, Plus, Trash2 } from "lucide-react";
+import { Copy, Drum, Layers, Pencil, Piano, Plus, Trash2 } from "lucide-react";
 
 import { memo, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -120,7 +120,7 @@ const PatternItem = memo(function PatternItem({ id, name, kind, lengthBars, note
             <span className={cn(uses === 0 && "text-coral-400/80")}>{uses === 0 ? "sem uso" : `×${uses}`}</span>
           </div>
         </div>
-        <div className="flex opacity-0 transition group-hover/pat:opacity-100">
+        <div className="flex opacity-0 transition group-hover/pat:opacity-100 pointer-coarse:opacity-100">
           <IconButton
             label="Duplicar"
             size="sm"
@@ -240,11 +240,8 @@ export function PatternLibrary() {
         <span className="font-mono text-[10px] text-fg-faint">{patterns.length}</span>
         <div className="flex-1" />
         <NewPatternButton />
-        <IconButton label="Esconder patterns (B)" size="sm" onClick={() => useUi.getState().toggleLibrary()}>
-          <PanelLeftClose />
-        </IconButton>
       </div>
-      <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2 [scrollbar-color:var(--color-ink-600)_transparent] [scrollbar-width:thin]">
+      <div className="grid min-h-0 flex-1 auto-rows-min content-start gap-1.5 overflow-y-auto p-2 [scrollbar-color:var(--color-ink-600)_transparent] [scrollbar-width:thin] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {patterns.map((p) => (
           <PatternItem key={p.id} {...p} open={editorOpen && openId === p.id} />
         ))}

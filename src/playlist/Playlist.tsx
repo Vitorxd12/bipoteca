@@ -1,4 +1,4 @@
-import { Drum, PanelLeftOpen, Piano, Plus, ZoomIn, ZoomOut } from "lucide-react";
+import { Drum, Piano, Plus, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { localPoint, wheelDelta } from "@/canvas/useCanvas";
 import { clamp, cn } from "@/lib/utils";
@@ -10,6 +10,7 @@ import { HScrollbar } from "@/ui/HScrollbar";
 import { Popover } from "@/ui/Popover";
 import { GLASS, IconButton, LABEL } from "@/ui/primitives";
 import { SnapMenu, type SnapOption } from "@/ui/SnapMenu";
+import { useCompact } from "@/ui/useCompact";
 import { PlaylistGrid } from "./PlaylistGrid";
 import { PlaylistRuler } from "./PlaylistRuler";
 import { TrackHeader } from "./TrackHeader";
@@ -90,13 +91,14 @@ function AddTrackButton() {
 }
 
 const HEADER_W = 232;
+const HEADER_W_MOBILE = 132;
 const RULER_H = 34;
 
 export function Playlist() {
   const tracks = useProject((s) => s.project.tracks);
   const { scrollY, rowH } = usePlaylistView();
   const snap = useUi((s) => s.playlistSnap);
-  const libraryOpen = useUi((s) => s.libraryOpen);
+  const compact = useCompact();
   const headersRef = useRef<HTMLDivElement>(null);
   const [reorder, setReorder] = useState<{ id: string; y: number; target: number } | null>(null);
   const reorderRef = useRef<{ id: string; y: number; target: number } | null>(null);
@@ -167,11 +169,6 @@ export function Playlist() {
   return (
     <section className={cn(GLASS, "flex h-full min-h-0 flex-col overflow-hidden")}>
       <div className="flex h-11 shrink-0 items-center gap-2 border-b border-white/[0.06] px-3">
-        {!libraryOpen && (
-          <IconButton label="Mostrar patterns (B)" size="sm" tone="uv" onClick={() => useUi.getState().toggleLibrary()}>
-            <PanelLeftOpen />
-          </IconButton>
-        )}
         <span className={LABEL}>Playlist</span>
         <div className="flex-1" />
         <SnapMenu value={snap} options={SNAP_OPTIONS} onChange={(v) => useUi.getState().setPlaylistSnap(v)} />
@@ -186,7 +183,10 @@ export function Playlist() {
 
       <div
         className="grid min-h-0 flex-1"
-        style={{ gridTemplateColumns: `${HEADER_W}px 1fr`, gridTemplateRows: `${RULER_H}px 1fr` }}
+        style={{
+          gridTemplateColumns: `${compact ? HEADER_W_MOBILE : HEADER_W}px 1fr`,
+          gridTemplateRows: `${RULER_H}px 1fr`,
+        }}
       >
         <div className="flex items-center justify-between border-r border-b border-white/[0.06] bg-ink-900 px-3">
           <span className={LABEL}>Trilhas</span>

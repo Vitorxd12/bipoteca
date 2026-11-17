@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Snap } from "@/model/music";
 import { PPQ, TICKS_PER_BAR } from "@/model/types";
+import { back, go, type Screen, useRouter } from "./router";
 import { useTransport } from "./transport";
 
 export type EditorMode = "closed" | "split" | "full";
@@ -64,7 +65,7 @@ export const useUi = create<UiState>((set, get) => ({
   editorTrackId: null,
   editorMode: "closed",
   splitRatio: 0.48,
-  libraryOpen: true,
+  libraryOpen: false,
   playlistSnap: "bar",
   editorSnap: "1/16",
   selectedClipIds: [],
@@ -76,34 +77,48 @@ export const useUi = create<UiState>((set, get) => ({
   zone: "playlist",
   helpOpen: false,
 
-  openPattern: (patternId, trackId, mode) =>
-    set((s) => ({
+  // Navegação: cada uma destas ações leva a uma tela (store/router.ts).
+  openPattern: (patternId, trackId) => {
+    set((st) => ({
       openPatternId: patternId,
       editorTrackId: trackId,
-      editorMode: mode ?? (s.editorMode === "closed" ? "split" : s.editorMode),
       zone: "editor",
-      selectedNoteIds: s.openPatternId === patternId ? s.selectedNoteIds : [],
-    })),
-  // Editor fechado: o que toca é sempre a música.
+      selectedNoteIds: st.openPatternId === patternId ? st.selectedNoteIds : [],
+    }));
+    const cur = useRouter.getState().screen;
+    // Trocar de pattern dentro do editor não empilha telas.
+    go({ name: "pattern", patternId, trackId }, { replace: cur.name === "pattern" });
+  },
   closeEditor: () => {
-    useTransport.getState().setMode("song");
-    set({ editorMode: "closed", zone: "playlist" });
+    if (useRouter.getState().screen.name === "pattern") back();
   },
   setEditorMode: (editorMode) => {
     if (editorMode === "closed") get().closeEditor();
-    else set({ editorMode });
   },
-  setSplitRatio: (r) => set({ splitRatio: Math.min(0.85, Math.max(0.2, r)) }),
-  toggleLibrary: () => set((s) => ({ libraryOpen: !s.libraryOpen })),
+  setSplitRatio: () => {},
+  toggleLibrary: () => {
+    if (useRouter.getState().screen.name === "patterns") back();
+    else go({ name: "patterns" });
+  },
   setPlaylistSnap: (playlistSnap) => set({ playlistSnap }),
   setEditorSnap: (editorSnap) => set({ editorSnap }),
   selectClips: (selectedClipIds) => set({ selectedClipIds }),
   selectNotes: (selectedNoteIds) => set({ selectedNoteIds }),
   setLastNoteLength: (lastNoteLength) => set({ lastNoteLength }),
-  openPicker: (picker) => set({ picker }),
-  closePicker: () => set({ picker: null }),
-  openKitBrowser: (kitBrowser) => set({ kitBrowser }),
-  closeKitBrowser: () => set({ kitBrowser: null }),
+  openPicker: (t) => {
+    const cur = useRouter.getState().screen;
+    const next: Screen =
+      t.type === "row" ? { name: "sound", trackId: t.trackId, rowId: t.rowId } : { name: "sound", trackId: t.trackId };
+    // Trocar de linha dentro do seletor não empilha telas.
+    go(next, { replace: cur.name === "sound" });
+  },
+  closePicker: () => {
+    if (useRouter.getState().screen.name === "sound") back();
+  },
+  openKitBrowser: (t) => go(t.mode === "replace" ? { name: "kits", trackId: t.trackId } : { name: "kits" }),
+  closeKitBrowser: () => {
+    if (useRouter.getState().screen.name === "kits") back();
+  },
   askConfirm: (req) =>
     new Promise<boolean>((resolve) => {
       get().confirm?.resolve(false);
@@ -116,10 +131,49 @@ export const useUi = create<UiState>((set, get) => ({
   setZone: (zone) => {
     if (get().zone !== zone) set({ zone });
   },
-  setHelpOpen: (helpOpen) => set({ helpOpen }),
+  setHelpOpen: (open) => {
+    const onHelp = useRouter.getState().screen.name === "help";
+    if (open && !onHelp) go({ name: "help" });
+    if (!open && onHelp) back();
+  },
 }));
 
 export const ui = () => useUi.getState();
+
+/** O estado da UI segue a tela atual (inclusive ao usar o "voltar" do navegador). */
+function syncFromScreen(screen: Screen): void {
+  const st = useUi.getState();
+  const patch: Partial<UiState> = {
+    picker:
+      screen.name === "sound"
+        ? screen.rowId
+          ? { type: "row", trackId: screen.trackId, rowId: screen.rowId }
+          : { type: "track", trackId: screen.trackId }
+        : null,
+    kitBrowser:
+      screen.name === "kits"
+        ? screen.trackId
+          ? { mode: "replace", trackId: screen.trackId }
+          : { mode: "create" }
+        : null,
+    helpOpen: screen.name === "help",
+    libraryOpen: screen.name === "patterns",
+    editorMode: screen.name === "pattern" ? "full" : "closed",
+  };
+  if (screen.name === "pattern") {
+    patch.openPatternId = screen.patternId;
+    patch.editorTrackId = screen.trackId;
+    patch.zone = "editor";
+  } else if (screen.name === "playlist") patch.zone = "playlist";
+  useUi.setState(patch);
+  // Fora do editor, o que toca é sempre a música.
+  if (screen.name !== "pattern" && useTransport.getState().mode === "pattern") useTransport.getState().setMode("song");
+  void st;
+}
+syncFromScreen(useRouter.getState().screen);
+useRouter.subscribe((s, prev) => {
+  if (s.screen !== prev.screen) syncFromScreen(s.screen);
+});
 
 /** Passo de encaixe da playlist em ticks ("off" = livre, 1 tick). */
 export function playlistSnapTicks(s: PlaylistSnap): number {

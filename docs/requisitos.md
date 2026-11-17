@@ -29,20 +29,20 @@ Um pattern herda o tipo da trilha onde foi criado e só pode ser posicionado em 
 
 ## 3. Telas
 
-| ID | Tela / painel | Tipo | Conteúdo |
+Uma tela por vez, cada uma com **uma responsabilidade** e um endereço próprio (o "voltar" do navegador e do celular funciona). O transporte e a navegação não são telas: ficam em volta de todas (no desktop em cima; no celular embaixo, perto do polegar).
+
+| ID | Tela | Endereço | Responsabilidade |
 |---|---|---|---|
-| T1 | Projetos | Página inicial | Lista de projetos locais, novo projeto, abrir, excluir. |
-| T2 | Estúdio | Página principal | Casca que contém T3–T8. |
-| T3 | Barra de transporte | Faixa fixa no topo | Play/stop, BPM, posição, loop, metrônomo, nome do projeto, undo/redo. |
-| T4 | Playlist | Área central | Cabeçalhos de trilha à esquerda, régua de compassos, grade com clipes. |
-| T5 | Biblioteca de patterns | Painel lateral recolhível | Lista de patterns do projeto, para arrastar à playlist. |
-| T6 | Piano roll | Split com a playlist ou tela cheia | Teclado vertical, grade de notas, faixa de velocity. |
-| T7 | Editor de kit | Mesmo lugar de T6, outra apresentação | Linhas nomeadas do kit, grade de steps, faixa de velocity. |
-| T8 | Seletor de instrumento | Popover / gaveta | Lista de presets com pré-escuta. Usado pela trilha de instrumento e por cada linha do kit. |
+| T1 | Projetos | — | (depois) Lista de projetos locais. Hoje o app abre direto no projeto salvo. |
+| T3 | Transporte | fixo | Play/stop, posição, BPM, loop, metrônomo, desfazer. |
+| T4 | Playlist | `#/` | Organizar trilhas e clipes no tempo. |
+| T5 | Patterns | `#/patterns` | Biblioteca: criar, renomear, duplicar, apagar, arrastar para a playlist. |
+| T6/T7 | Editor do pattern | `#/pattern/<id>/<trilha>` | Escrever notas: piano roll (trilha de instrumento) ou editor de kit (trilha de kit). |
+| T8 | Som | `#/som/...` | Escolher o instrumento de uma trilha ou os sons das linhas de um kit. |
+| T9 | Kits | `#/kits/...` | Escolher o kit de uma trilha nova ou trocar o kit de uma trilha. |
+| T10 | Ajuda | `#/ajuda` | Gestos e atalhos. |
 
-O editor (T6/T7) tem dois modos de exibição, alternáveis a qualquer momento: **split**, dividindo a tela com a playlist, e **tela cheia**, ocupando o lugar dela. A barra de transporte permanece nos dois.
-
-T6 e T7 ocupam o mesmo lugar: qual dos dois abre depende do tipo da trilha do pattern. O usuário não alterna um "modo"; ele abre um pattern de trilha de kit e o editor já é o de kit.
+O editor abre a partir do clipe, da biblioteca ou da aba "Editor", e o tipo da trilha decide qual editor aparece. Em telas de toque: pinça dá zoom, um dedo no vazio rola, toque cria nota, dois toques criam pattern, toque longo abre menu.
 
 ## 4. Requisitos funcionais
 
@@ -325,7 +325,7 @@ Antes de fechar a fase 1: teste de carga com 32 trilhas × 16 vozes, canvas rola
 - Pattern preso ao tipo da trilha: de instrumento só entra em trilha de instrumento, de kit só em trilha de kit.
 - Kit não é sinônimo de bateria: é qualquer conjunto de sons, um por linha.
 - Sem limites criativos; só limites técnicos, altos o bastante para não aparecerem no uso normal.
-- Editor em split ou tela cheia, à escolha do usuário.
+- Telas separadas, uma responsabilidade por tela (substitui o split playlist + editor); funciona em celular.
 - Áudio só com bibliotecas open source, atrás do adaptador `InstrumentEngine`. Tone.js é a base e o relógio único.
 - Elementary Audio e BeepBox ficam fora como engine.
 

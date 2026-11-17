@@ -17,6 +17,8 @@ import {
   Pencil,
   Piano,
   Trash2,
+  Volume1,
+  Volume2,
 } from "lucide-react";
 import { memo, useEffect, useState } from "react";
 import { presetInfo } from "@/audio/registry";
@@ -28,6 +30,7 @@ import { useTransport } from "@/store/transport";
 import { useUi } from "@/store/ui";
 import { InlineEdit } from "@/ui/InlineEdit";
 import { showMenu } from "@/ui/overlays";
+import { useCompact } from "@/ui/useCompact";
 
 export const TrackHeader = memo(function TrackHeader({
   track,
@@ -47,7 +50,8 @@ export const TrackHeader = memo(function TrackHeader({
   const [renaming, setRenaming] = useState(false);
   const kit = track.kind === "kit";
   const preset = presetInfo(track.preset);
-  const compact = height < 60;
+  const narrow = useCompact();
+  const compact = height < 60 || narrow;
   const silenced = anySolo ? !track.solo : track.muted;
 
   // Aviso de polifonia acende e apaga sozinho (RF-69).
@@ -78,6 +82,9 @@ export const TrackHeader = memo(function TrackHeader({
     const n = getProject().tracks.length;
     showMenu(e, [
       { label: "Renomear", icon: <Pencil />, hint: "2× clique", onSelect: () => setRenaming(true) },
+      { label: "Volume 100%", icon: <Volume2 />, onSelect: () => actions.updateTrack(track.id, { volume: 1 }) },
+      { label: "Volume 80%", icon: <Volume2 />, onSelect: () => actions.updateTrack(track.id, { volume: 0.8 }) },
+      { label: "Volume 50%", icon: <Volume1 />, onSelect: () => actions.updateTrack(track.id, { volume: 0.5 }) },
       {
         label: "Mover para cima",
         icon: <ArrowUp />,
@@ -144,7 +151,7 @@ export const TrackHeader = memo(function TrackHeader({
       />
       <button
         type="button"
-        className="-ml-1 flex w-4 shrink-0 cursor-grab items-start justify-center pt-1 text-fg-faint opacity-0 transition group-hover/track:opacity-100 active:cursor-grabbing"
+        className="-ml-1 flex w-4 shrink-0 cursor-grab items-start justify-center pt-1 text-fg-faint opacity-0 transition group-hover/track:opacity-100 active:cursor-grabbing max-md:hidden"
         onPointerDown={(e) => onReorderStart(e, track.id)}
         aria-label="Arrastar para reordenar"
         title="Arraste para reordenar"
@@ -179,7 +186,7 @@ export const TrackHeader = memo(function TrackHeader({
           <button
             type="button"
             onClick={(e) => menu(e)}
-            className="text-fg-faint opacity-0 transition group-hover/track:opacity-100 hover:text-fg"
+            className="text-fg-faint opacity-0 transition group-hover/track:opacity-100 hover:text-fg pointer-coarse:opacity-100"
             aria-label="Menu da trilha"
           >
             <MoreHorizontal className="size-4" />

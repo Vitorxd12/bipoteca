@@ -17,6 +17,7 @@
 import { Copy, Fingerprint, FolderOpen, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 import { host } from "@/audio/host";
+import { LongPress, TouchTracker } from "@/canvas/touch";
 import { localPoint, roundRect, useCanvas, wheelDelta } from "@/canvas/useCanvas";
 import { usePlayhead } from "@/canvas/usePlayhead";
 import { snapDown, snapRound } from "@/model/music";
@@ -93,7 +94,8 @@ type Drag =
       y1: number;
       base: string[];
     }
-  | { kind: "pan"; x0: number; y0: number; sx: number; sy: number };
+  | { kind: "pan"; x0: number; y0: number; sx: number; sy: number; tap?: boolean; moved?: boolean }
+  | { kind: "pinch" };
 
 interface DropHover {
   trackIndex: number;
@@ -109,6 +111,9 @@ export function PlaylistGrid() {
   const openPatternId = useUi((s) => s.openPatternId);
   const snap = useUi((s) => s.playlistSnap);
   const drag = useRef<Drag | null>(null);
+  const touches = useRef(new TouchTracker());
+  const longPress = useRef(new LongPress());
+  const lastTap = useRef<{ t: number; x: number; y: number } | null>(null);
   const drop = useRef<DropHover | null>(null);
   const copyGhost = useRef<Clip[]>([]);
   const wrap = useRef<HTMLDivElement>(null);
@@ -370,6 +375,19 @@ export function PlaylistGrid() {
     const { x, y } = localPoint(e, el);
     const uiState = useUi.getState();
     uiState.setZone("playlist");
+    const touch = e.pointerType === "touch";
+    if (touch) {
+      touches.current.down(e.pointerId, x, y);
+      el.setPointerCapture(e.pointerId);
+      // Segundo dedo: vira pinça (zoom + rolagem) e abandona o que estava fazendo.
+      if (touches.current.count >= 2) {
+        longPress.current.cancel();
+        if (drag.current?.kind === "move" && !drag.current.copy) endGesture();
+        copyGhost.current = [];
+        drag.current = { kind: "pinch" };
+        return;
+      }
+    }
     if (e.button === 1) {
       e.preventDefault();
       el.setPointerCapture(e.pointerId);
@@ -398,6 +416,20 @@ export function PlaylistGrid() {
         uiState.selectClips(additive ? [...uiState.selectedClipIds, clip.id] : [clip.id]);
       }
       drag.current = { kind: "press", clipId: clip.id, x0: x, y0: y, toggled };
+      // Toque longo num clipe: menu do clipe.
+      if (touch) {
+        const cx = e.clientX;
+        const cy = e.clientY;
+        longPress.current.start(x, y, () => {
+          drag.current = null;
+          openMenuAt(cx, cy, x, y);
+        });
+      }
+      return;
+    }
+    if (touch) {
+      const v = usePlaylistView.getState();
+      drag.current = { kind: "pan", x0: x, y0: y, sx: v.scrollX, sy: v.scrollY, tap: true };
       return;
     }
     drag.current = {
@@ -477,12 +509,26 @@ export function PlaylistGrid() {
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const el = e.currentTarget;
     const { x, y } = localPoint(e, el);
+    if (e.pointerType === "touch") {
+      longPress.current.move(x, y);
+      const step = touches.current.move(e.pointerId, x, y);
+      if (drag.current?.kind === "pinch") {
+        if (step) {
+          zoomAt(step.cx, step.scale);
+          const v = usePlaylistView.getState();
+          v.set({ scrollX: v.scrollX - step.dx / v.pxPerTick, scrollY: v.scrollY - step.dy });
+        }
+        return;
+      }
+    }
     const d = drag.current;
     if (!d) {
       el.style.cursor = hitClip(x, y) ? "grab" : "default";
       return;
     }
+    if (d.kind === "pinch") return;
     if (d.kind === "pan") {
+      if (Math.hypot(x - d.x0, y - d.y0) > 6) d.moved = true;
       const v = usePlaylistView.getState();
       v.set({
         scrollX: d.sx - (x - d.x0) / v.pxPerTick,
@@ -525,8 +571,28 @@ export function PlaylistGrid() {
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.pointerType === "touch") {
+      touches.current.up(e.pointerId);
+      longPress.current.cancel();
+      // Pinça só termina quando todos os dedos saem.
+      if (drag.current?.kind === "pinch") {
+        if (touches.current.count === 0) drag.current = null;
+        return;
+      }
+    }
     const d = drag.current;
     drag.current = null;
+    if (d?.kind === "pan" && d.tap && !d.moved) {
+      // Toque no vazio limpa a seleção; dois toques rápidos criam um pattern.
+      const { x, y } = localPoint(e, e.currentTarget);
+      const prev = lastTap.current;
+      lastTap.current = { t: e.timeStamp, x, y };
+      if (prev && e.timeStamp - prev.t < 350 && Math.hypot(x - prev.x, y - prev.y) < 24) {
+        lastTap.current = null;
+        createOrOpenAt(x, y);
+      } else useUi.getState().selectClips([]);
+      return;
+    }
     e.currentTarget.style.cursor = "default";
     if (!d) return;
     if (d.kind === "press" && !d.toggled && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
@@ -550,6 +616,10 @@ export function PlaylistGrid() {
 
   const onDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = localPoint(e, e.currentTarget);
+    createOrOpenAt(x, y);
+  };
+
+  function createOrOpenAt(x: number, y: number) {
     const clip = hitClip(x, y);
     const ui = useUi.getState();
     if (clip) {
@@ -561,11 +631,18 @@ export function PlaylistGrid() {
     const start = Math.max(0, snapDown(tickAt(x), step));
     const pid = useProject.getState().createPatternAt(tr.id, start);
     if (pid) ui.openPattern(pid, tr.id);
-  };
+  }
 
   const onContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault();
+    // No toque, o menu já sai pelo toque longo.
+    if (touches.current.count > 0) return;
     const { x, y } = localPoint(e, e.currentTarget);
+    openMenuAt(e.clientX, e.clientY, x, y);
+  };
+
+  function openMenuAt(clientX: number, clientY: number, x: number, y: number) {
+    const e = { clientX, clientY };
     const clip = hitClip(x, y);
     const ui = useUi.getState();
     const actions = useProject.getState();
@@ -641,7 +718,7 @@ export function PlaylistGrid() {
         onSelect: () => actions.addTrack("kit", "empty"),
       },
     ]);
-  };
+  }
 
   // ----------------------------------------------------- arrastar e soltar
 

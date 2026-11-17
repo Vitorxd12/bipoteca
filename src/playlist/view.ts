@@ -19,7 +19,8 @@ export const ROW_H = { min: 40, max: 128 } as const;
 export const usePlaylistView = create<PlaylistView>((set) => ({
   scrollX: -TICKS_PER_BAR * 0.25,
   scrollY: 0,
-  pxPerTick: 0.17,
+  // Celular começa mais afastado: cabe mais música na tela estreita.
+  pxPerTick: typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches ? 0.08 : 0.17,
   rowH: 72,
   set: (p) =>
     set((s) => ({

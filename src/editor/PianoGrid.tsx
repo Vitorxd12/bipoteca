@@ -15,6 +15,7 @@
  */
 import { useCallback, useEffect, useRef } from "react";
 import { host } from "@/audio/host";
+import { TouchTracker } from "@/canvas/touch";
 import { localPoint, roundRect, useCanvas, wheelDelta } from "@/canvas/useCanvas";
 import { usePlayhead } from "@/canvas/usePlayhead";
 import { clamp, uid } from "@/lib/utils";
@@ -41,7 +42,8 @@ type Drag =
   | { kind: "resize"; x0: number; anchor: Note; origin: Map<string, Note> }
   | { kind: "marquee"; x0: number; y0: number; x1: number; y1: number; base: string[] }
   | { kind: "erase" }
-  | { kind: "pan"; x0: number; y0: number; sx: number; sy: number };
+  | { kind: "pan"; x0: number; y0: number; sx: number; sy: number; tap?: boolean; moved?: boolean }
+  | { kind: "pinch" };
 
 const EDGE = 7;
 
@@ -51,6 +53,9 @@ export function PianoGrid({ trackId }: { trackId: string | null }) {
   const selected = useUi((s) => s.selectedNoteIds);
   const snap = useUi((s) => s.editorSnap);
   const drag = useRef<Drag | null>(null);
+  const touches = useRef(new TouchTracker());
+  /** Borda da nota (para mudar a duração): maior no toque, o dedo é menos preciso. */
+  const edgePx = useRef(EDGE);
   const hover = useRef<{ tick: number; pitch: number } | null>(null);
   const lastDown = useRef<{ id: string; t: number } | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
@@ -221,7 +226,7 @@ export function PianoGrid({ trackId }: { trackId: string | null }) {
       const n = pat.notes[i];
       if (!n || n.pitch !== p || t < n.start || t > n.start + n.duration) continue;
       const right = (n.start + n.duration - v.scrollX) * v.pxPerTick;
-      return { note: n, edge: right - x <= EDGE && n.duration * v.pxPerTick > EDGE * 1.5 };
+      return { note: n, edge: right - x <= edgePx.current && n.duration * v.pxPerTick > edgePx.current * 1.5 };
     }
     return null;
   };
@@ -239,6 +244,19 @@ export function PianoGrid({ trackId }: { trackId: string | null }) {
     ui.setZone("editor");
     const pat = openPattern();
     if (!pat) return;
+    const touch = e.pointerType === "touch";
+    edgePx.current = touch ? 18 : EDGE;
+    if (touch) {
+      touches.current.down(e.pointerId, x, y);
+      el.setPointerCapture(e.pointerId);
+      if (touches.current.count >= 2) {
+        // Segundo dedo: pinça. Desfaz a nota que o primeiro toque possa ter criado.
+        const d = drag.current;
+        if (d && d.kind !== "pan" && d.kind !== "pinch" && d.kind !== "marquee") endGesture();
+        drag.current = { kind: "pinch" };
+        return;
+      }
+    }
 
     if (e.button === 1) {
       e.preventDefault();
@@ -325,10 +343,23 @@ export function PianoGrid({ trackId }: { trackId: string | null }) {
       return;
     }
 
-    // Vazio: cria nota e já entra em modo de mover.
+    // Toque no vazio: rola se arrastar; cria nota se for só um toque (no soltar).
+    if (touch) {
+      const v = useEditorView.getState();
+      drag.current = { kind: "pan", x0: x, y0: y, sx: v.scrollX, sy: v.scrollY, tap: true };
+      return;
+    }
+    createNoteAt(x, y, e.altKey, true);
+  };
+
+  /** Cria uma nota na posição; com `thenDrag`, já entra em modo de mover. */
+  function createNoteAt(x: number, y: number, free: boolean, thenDrag: boolean) {
+    const pat = openPattern();
+    if (!pat) return;
+    const ui = useUi.getState();
     const pitch = pitchAt(y);
     const len = pat.lengthBars * TICKS_PER_BAR;
-    const start = snapDown(tickAt(x), e.altKey ? 1 : step);
+    const start = snapDown(tickAt(x), free ? 1 : step);
     if (pitch < LIMITS.pitchMin || pitch > LIMITS.pitchMax || start < 0 || start >= len) return;
     if (pat.notes.length >= LIMITS.notesPerPattern) {
       toast(LIMIT_LABELS.notesPerPattern, "warn");
@@ -345,6 +376,10 @@ export function PianoGrid({ trackId }: { trackId: string | null }) {
     setOpenNotes([...pat.notes, note]);
     ui.selectNotes([note.id]);
     preview(pitch);
+    if (!thenDrag) {
+      endGesture();
+      return;
+    }
     drag.current = {
       kind: "move",
       x0: x,
@@ -354,7 +389,7 @@ export function PianoGrid({ trackId }: { trackId: string | null }) {
       lastPitch: pitch,
       moved: false,
     };
-  };
+  }
 
   const eraseAt = (x: number, y: number) => {
     const hit = hitNote(x, y);
@@ -366,6 +401,17 @@ export function PianoGrid({ trackId }: { trackId: string | null }) {
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const el = e.currentTarget;
     const { x, y } = localPoint(e, el);
+    if (e.pointerType === "touch") {
+      const pinch = touches.current.move(e.pointerId, x, y);
+      if (drag.current?.kind === "pinch") {
+        if (pinch) {
+          editorZoomAt(pinch.cx, pinch.scale);
+          const v = useEditorView.getState();
+          v.set({ scrollX: v.scrollX - pinch.dx / v.pxPerTick, scrollY: v.scrollY - pinch.dy });
+        }
+        return;
+      }
+    }
     const d = drag.current;
     const pat = openPattern();
     if (!d) {
@@ -383,7 +429,9 @@ export function PianoGrid({ trackId }: { trackId: string | null }) {
     const v = useEditorView.getState();
     const len = pat.lengthBars * TICKS_PER_BAR;
 
+    if (d.kind === "pinch") return;
     if (d.kind === "pan") {
+      if (Math.hypot(x - d.x0, y - d.y0) > 6) d.moved = true;
       v.set({ scrollX: d.sx - (x - d.x0) / v.pxPerTick, scrollY: d.sy - (y - d.y0) });
       return;
     }
@@ -449,8 +497,20 @@ export function PianoGrid({ trackId }: { trackId: string | null }) {
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.pointerType === "touch") {
+      touches.current.up(e.pointerId);
+      if (drag.current?.kind === "pinch") {
+        if (touches.current.count === 0) drag.current = null;
+        return;
+      }
+    }
     const d = drag.current;
     drag.current = null;
+    // Toque simples no vazio: cria a nota ali.
+    if (d?.kind === "pan" && d.tap && !d.moved) {
+      createNoteAt(d.x0, d.y0, false, false);
+      return;
+    }
     e.currentTarget.style.cursor = "crosshair";
     if (!d) return;
     if (d.kind === "resize") {

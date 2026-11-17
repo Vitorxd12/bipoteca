@@ -2,6 +2,7 @@
 import { get, set } from "idb-keyval";
 import { create } from "zustand";
 import type { KitPreset } from "@/audio/presets";
+import { migratePreset } from "@/audio/samplePresets";
 import { uid } from "@/lib/utils";
 import type { KitRow } from "@/model/types";
 import { toast } from "./toast";
@@ -31,7 +32,10 @@ export const useKits = create<KitsState>((setState, getState) => ({
   load: async () => {
     if (getState().loaded) return;
     try {
-      const kits = (await get<KitPreset[]>(KEY)) ?? [];
+      const kits = ((await get<KitPreset[]>(KEY)) ?? []).map((k) => ({
+        ...k,
+        rows: k.rows.map((r) => ({ ...r, preset: migratePreset(r.preset) })),
+      }));
       setState({ userKits: kits, loaded: true });
     } catch {
       setState({ loaded: true });

@@ -1,5 +1,6 @@
 /** Salvamento automático no navegador (RF-02) com aviso de falha (RF-68). */
 import { get, set } from "idb-keyval";
+import { migratePreset } from "@/audio/samplePresets";
 import { demoProject } from "@/model/demo";
 import type { Project } from "@/model/types";
 import { useProject } from "./project";
@@ -15,9 +16,21 @@ export async function loadProject(): Promise<void> {
     console.error(e);
     toast("Não foi possível ler o projeto salvo neste navegador", "error");
   }
-  useProject.getState().replaceProject(project ?? demoProject());
+  useProject.getState().replaceProject(project ? migrateProject(project) : demoProject());
   useProject.temporal.getState().clear();
   startAutosave();
+}
+
+/** Projetos salvos antes de uma mudança de catálogo continuam tocando. */
+function migrateProject(p: Project): Project {
+  return {
+    ...p,
+    tracks: p.tracks.map((t) => ({
+      ...t,
+      preset: t.preset ? migratePreset(t.preset) : t.preset,
+      kit: t.kit.map((r) => ({ ...r, preset: migratePreset(r.preset) })),
+    })),
+  };
 }
 
 let timer: ReturnType<typeof setTimeout> | null = null;

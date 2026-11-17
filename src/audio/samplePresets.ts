@@ -1,9 +1,10 @@
 /**
  * Sons sampleados. Só metadados (o seletor lista sem baixar nada).
  *
- * Baterias: samples de domínio público de máquinas clássicas
- * (github.com/smpldsnds/drum-machines). Instrumentos: banco FluidR3_GM (MIT),
- * tocado pelo smplr.
+ * Bateria: TR-808 sampleada por Michael Fischer (1994, distribuída como
+ * gratuita), via github.com/smpldsnds/drum-machines. As outras máquinas desse
+ * repositório saíram: não têm crédito nem licença rastreável.
+ * Instrumentos: banco FluidR3_GM (MIT), tocado pelo smplr.
  */
 import type { PresetRef } from "@/model/types";
 import type { PercGroup, PresetCategory, PresetInfo } from "./engine";
@@ -44,90 +45,6 @@ export const DRUM_MACHINES: DrumMachineDef[] = [
       h("cowbell/cb", "Cowbell", "perc", 56, -3),
       h("clave/cl", "Clave", "perc", 75, -3),
       h("maraca/ma", "Maraca", "perc", 70, -3),
-    ],
-  },
-  {
-    id: "lm2",
-    dir: "LM-2",
-    label: "LM-2",
-    description: "Linn LM-2, 1982: bateria acústica sampleada dos anos 80",
-    hits: [
-      h("kick", "Bumbo", "bumbo", 36),
-      h("kick-alt", "Bumbo 2", "bumbo", 35),
-      h("snare-m", "Caixa", "caixa", 38),
-      h("snare-h", "Caixa aguda", "caixa", 40),
-      h("stick-m", "Aro", "caixa", 37),
-      h("clap", "Palma", "caixa", 39),
-      h("hhclosed", "Chimbal fechado", "prato", 42, -3),
-      h("hhopen", "Chimbal aberto", "prato", 46, -3),
-      h("crash", "Prato de ataque", "prato", 49, -5),
-      h("ride", "Condução", "prato", 51, -5),
-      h("tom-l", "Tom grave", "perc", 41),
-      h("tom-m", "Tom médio", "perc", 45),
-      h("tom-h", "Tom agudo", "perc", 48),
-      h("conga-l", "Conga grave", "perc", 64),
-      h("conga-h", "Conga aguda", "perc", 63),
-      h("cowbell", "Cowbell", "perc", 56, -3),
-      h("tambourine", "Pandeirola", "perc", 54, -3),
-      h("cabasa", "Cabasa", "perc", 69, -3),
-    ],
-  },
-  {
-    id: "rz1",
-    dir: "Casio-RZ1",
-    label: "RZ-1",
-    description: "Casio RZ-1, 1986: crocante, de 12 bits",
-    hits: [
-      h("kick", "Bumbo", "bumbo", 36),
-      h("snare", "Caixa", "caixa", 38),
-      h("clap", "Palma", "caixa", 39),
-      h("hihat-closed", "Chimbal fechado", "prato", 42, -3),
-      h("hihat-open", "Chimbal aberto", "prato", 46, -3),
-      h("crash", "Prato de ataque", "prato", 49, -5),
-      h("ride", "Condução", "prato", 51, -5),
-      h("tom-3", "Tom grave", "perc", 41),
-      h("tom-2", "Tom médio", "perc", 45),
-      h("tom-1", "Tom agudo", "perc", 48),
-      h("cowbell", "Cowbell", "perc", 56, -3),
-      h("clave", "Clave", "perc", 75, -3),
-    ],
-  },
-  {
-    id: "mfb512",
-    dir: "MFB-512",
-    label: "MFB-512",
-    description: "MFB-512: analógico seco e duro",
-    hits: [
-      h("kick", "Bumbo", "bumbo", 36),
-      h("snare", "Caixa", "caixa", 38),
-      h("clap", "Palma", "caixa", 39),
-      h("hihat-closed", "Chimbal fechado", "prato", 42, -3),
-      h("hihat-open", "Chimbal aberto", "prato", 46, -3),
-      h("cymbal", "Prato", "prato", 49, -5),
-      h("tom-low", "Tom grave", "perc", 41),
-      h("tom-mid", "Tom médio", "perc", 45),
-      h("tom-hi", "Tom agudo", "perc", 48),
-    ],
-  },
-  {
-    id: "cr8000",
-    dir: "Roland-CR-8000",
-    label: "CR-8000",
-    description: "Roland CR-8000, 1981: suave, de caixinha de ritmos",
-    hits: [
-      h("kick", "Bumbo", "bumbo", 36),
-      h("snare", "Caixa", "caixa", 38),
-      h("rimshot", "Aro", "caixa", 37),
-      h("clap", "Palma", "caixa", 39),
-      h("hihat-closed", "Chimbal fechado", "prato", 42, -3),
-      h("hihat-open", "Chimbal aberto", "prato", 46, -3),
-      h("cymball", "Prato", "prato", 49, -5),
-      h("tom-low", "Tom grave", "perc", 41),
-      h("tom-high", "Tom agudo", "perc", 48),
-      h("conga-low", "Conga grave", "perc", 64),
-      h("conga-high", "Conga aguda", "perc", 63),
-      h("cowbell", "Cowbell", "perc", 56, -3),
-      h("clave", "Clave", "perc", 75, -3),
     ],
   },
 ];
@@ -287,4 +204,34 @@ export const SAMPLE_PRESETS: PresetInfo[] = [
 /** Kit pronto com todos os sons de uma máquina, na ordem de uso mais comum. */
 export function machineKit(m: DrumMachineDef): { name: string; preset: PresetRef }[] {
   return m.hits.map((hit) => ({ name: hit.name, preset: { engine: "samples", preset: `dm:${m.id}:${hit.id}` } }));
+}
+
+/** Máquinas removidas: cada som vai para o equivalente da TR-808. */
+const REMOVED_MACHINES = new Set(["lm2", "rz1", "mfb512", "cr8000"]);
+const TO_808: [RegExp, string][] = [
+  [/kick/, "kick/bd2550"],
+  [/snare/, "snare/sd2550"],
+  [/stick|rim/, "rimshot/rs"],
+  [/clap/, "clap/cp"],
+  [/hhclosed|hihat-closed/, "hihat-close/ch"],
+  [/hhopen|hihat-open/, "hihat-open/oh25"],
+  [/crash|cymbal|cymball|ride/, "cymbal/cy5050"],
+  [/tom-(l|ll|low|3)$/, "tom-low/lt50"],
+  [/tom-(h|hh|hi|high|1)$/, "tom-hi/ht50"],
+  [/tom/, "mid-tom/mt50"],
+  [/conga-(l|ll|lll|low)$/, "conga-low/lc50"],
+  [/conga/, "conga-hi/hc50"],
+  [/cowbell/, "cowbell/cb"],
+  [/clave/, "clave/cl"],
+  [/tambourine|cabasa|shaker/, "maraca/ma"],
+];
+
+/** Atualiza referências a presets que deixaram de existir. */
+export function migratePreset(ref: PresetRef): PresetRef {
+  if (ref.engine !== "samples" || !ref.preset.startsWith("dm:")) return ref;
+  const [, machine = "", ...rest] = ref.preset.split(":");
+  if (!REMOVED_MACHINES.has(machine)) return ref;
+  const hit = rest.join(":");
+  const target = TO_808.find(([re]) => re.test(hit))?.[1] ?? "kick/bd2550";
+  return { engine: "samples", preset: `dm:tr808:${target}` };
 }

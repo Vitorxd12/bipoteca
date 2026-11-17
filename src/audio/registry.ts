@@ -4,6 +4,7 @@
  */
 import type { PresetRef } from "@/model/types";
 import type { InstrumentEngine, PresetInfo } from "./engine";
+import { PLAITS_PRESETS } from "./plaitsPresets";
 import { TONE_PRESETS } from "./presets";
 import { SAMPLE_PRESETS } from "./samplePresets";
 
@@ -15,6 +16,11 @@ interface EngineEntry {
 
 export const ENGINES: Record<string, EngineEntry> = {
   tone: { name: "Tone.js", presets: TONE_PRESETS, load: () => import("./engines/tone").then((m) => m.toneEngine) },
+  plaits: {
+    name: "Plaits",
+    presets: PLAITS_PRESETS,
+    load: () => import("./engines/plaits").then((m) => m.plaitsEngine),
+  },
   samples: {
     name: "Samples",
     presets: SAMPLE_PRESETS,

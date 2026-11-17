@@ -12,15 +12,15 @@ const note = (pitch: number, start: number, duration: number, velocity = 0.8): N
 });
 
 export function demoProject(): Project {
-  // Bateria de exemplo: samples da LM-2 (bumbo, caixa, chimbais, palma, tom).
-  const lm2 = (id: string, name: string) => ({ name, preset: { engine: "samples", preset: `dm:lm2:${id}` } });
+  // Bateria de exemplo: samples da TR-808 (bumbo, caixa, chimbais, palma, tom).
+  const tr808 = (id: string, name: string) => ({ name, preset: { engine: "samples", preset: `dm:tr808:${id}` } });
   const demoKit = [
-    lm2("kick", "Bumbo"),
-    lm2("snare-m", "Caixa"),
-    lm2("hhclosed", "Chimbal fechado"),
-    lm2("hhopen", "Chimbal aberto"),
-    lm2("clap", "Palma"),
-    lm2("tom-m", "Tom"),
+    tr808("kick/bd2550", "Bumbo"),
+    tr808("snare/sd2550", "Caixa"),
+    tr808("hihat-close/ch", "Chimbal fechado"),
+    tr808("hihat-open/oh25", "Chimbal aberto"),
+    tr808("clap/cp", "Palma"),
+    tr808("mid-tom/mt50", "Tom"),
   ];
   const kit: KitRow[] = demoKit.map((r, i) => ({
     id: uid("r"),
@@ -49,7 +49,7 @@ export function demoProject(): Project {
     volume: 0.75,
     muted: false,
     solo: false,
-    preset: { engine: "tone", preset: "acid" },
+    preset: { engine: "plaits", preset: "bass-analog" },
     kit: [],
   };
   const keys: Track = {

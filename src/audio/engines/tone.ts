@@ -10,6 +10,7 @@ type Disposable = { dispose(): unknown };
 
 interface Voice {
   out: Tone.Gain;
+  count?: () => number;
   parts: Disposable[];
   on(freq: number, velocity: number, time: number): void;
   off(freq: number, time: number): void;
@@ -31,6 +32,7 @@ function poly<V extends Tone.Synth | Tone.MonoSynth | Tone.FMSynth | Tone.AMSynt
     on: (f, v, t) => synth.triggerAttack(f, t, v),
     off: (f, t) => synth.triggerRelease(f, t),
     allOff: (t) => synth.releaseAll(t),
+    count: () => synth.activeVoices,
   };
 }
 
@@ -258,6 +260,7 @@ export const toneEngine: InstrumentEngine = {
       noteOn: (note, velocity, time) => v.on(toFreq(note), velocity, time),
       noteOff: (note, time) => v.off(toFreq(note), time),
       releaseAll: (time) => v.allOff(time),
+      activeVoices: () => v.count?.() ?? 0,
       dispose: () => {
         for (const p of v.parts) p.dispose();
         v.out.dispose();

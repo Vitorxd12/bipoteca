@@ -18,15 +18,15 @@ type Tone = "default" | "uv" | "volt" | "coral";
 
 const TONES: Record<Tone, { idle: string; on: string }> = {
   default: {
-    idle: "text-fg-muted hover:text-fg hover:bg-white/[0.06]",
+    idle: "text-fg/80 hover:text-fg hover:bg-white/[0.08]",
     on: "bg-white/[0.12] text-fg",
   },
   uv: {
-    idle: "text-fg-muted hover:text-uv-300 hover:bg-uv-500/10",
+    idle: "text-fg/80 hover:text-uv-300 hover:bg-uv-500/15",
     on: "bg-uv-500/25 text-uv-300 shadow-[0_0_18px_-6px_var(--color-uv-500)]",
   },
   volt: {
-    idle: "text-fg-muted hover:text-volt-400 hover:bg-volt-500/10",
+    idle: "text-fg/80 hover:text-volt-400 hover:bg-volt-500/15",
     on: "bg-volt-500 text-ink-950 shadow-[0_0_22px_-4px_var(--color-volt-500)]",
   },
   coral: {

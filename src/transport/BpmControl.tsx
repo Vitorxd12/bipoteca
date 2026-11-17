@@ -60,7 +60,7 @@ export function BpmControl() {
       aria-label="BPM"
       aria-valuenow={bpm}
       title="BPM · arraste ↕ ou use a roda (Shift: fino) · duplo clique para digitar"
-      className="group flex h-10 cursor-ns-resize items-center gap-1.5 rounded-xl bg-black/25 px-3 ring-1 ring-white/[0.06] transition ring-inset hover:ring-uv-500/40"
+      className="group flex h-10 cursor-ns-resize items-center gap-1.5 rounded-xl bg-black/55 px-3 ring-1 ring-white/[0.08] transition ring-inset hover:ring-uv-500/40"
       onPointerDown={(e) => {
         if (e.button !== 0) return;
         e.currentTarget.setPointerCapture(e.pointerId);
@@ -97,7 +97,7 @@ export function BpmControl() {
         duration={0.35}
         className="font-mono"
       />
-      <span className="font-mono text-[10px] font-medium tracking-wider text-fg-faint group-hover:text-uv-300">
+      <span className="font-mono text-[10px] font-medium tracking-wider text-fg-muted group-hover:text-uv-300">
         BPM
       </span>
     </div>

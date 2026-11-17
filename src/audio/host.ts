@@ -3,7 +3,7 @@
  *
  * - Um relógio só: este sequenciador decide quando cada nota toca e chama
  *   noteOn/noteOff com horário exato. Nenhuma engine sequencia sozinha.
- * - Agendamento com antecedência (~120 ms) disparado pelo ticker do Tone.js,
+ * - Agendamento com antecedência (~200 ms) disparado pelo ticker do Tone.js,
  *   que roda num Worker e não é estrangulado quando a aba perde o foco.
  * - Lê o projeto direto do store a cada janela: edições durante a reprodução
  *   valem na hora, sem reconstruir nada.
@@ -19,7 +19,8 @@ import { useUi } from "@/store/ui";
 import type { Instrument } from "./engine";
 import { loadEngine, presetInfo, presetKey } from "./registry";
 
-const LOOKAHEAD = 0.12;
+/** Antecedência do agendamento: tolera engasgos de até ~150 ms na thread principal. */
+const LOOKAHEAD = 0.2;
 const INTERVAL = 0.025;
 
 interface Slot {
@@ -68,6 +69,7 @@ class AudioHost {
 
   private playing = false;
   private timer: number | null = null;
+  private generation = 0;
   private schedTime = 0;
   private schedTick = 0;
   private anchors: Anchor[] = [];
@@ -195,6 +197,16 @@ class AudioHost {
 
   // ------------------------------------------------------------ transporte
 
+  /** Soma das vozes ativas em todas as engines (diagnóstico). */
+  activeVoices(): number {
+    let n = 0;
+    for (const node of this.tracks.values()) {
+      n += node.slot?.instrument?.activeVoices?.() ?? 0;
+      for (const rn of node.rows.values()) n += rn.slot.instrument?.activeVoices?.() ?? 0;
+    }
+    return n;
+  }
+
   isPlaying(): boolean {
     return this.playing;
   }
@@ -227,7 +239,11 @@ class AudioHost {
     this.playing = true;
     useTransport.getState().clearDrops();
     useTransport.getState().setPlaying(true);
-    this.timer = Tone.getContext().setInterval(() => this.tick(), INTERVAL);
+    const gen = ++this.generation;
+    // A geração descarta qualquer timer antigo que ainda dispare.
+    this.timer = Tone.getContext().setInterval(() => {
+      if (gen === this.generation) this.tick();
+    }, INTERVAL);
     this.tick();
   }
 
@@ -263,6 +279,7 @@ class AudioHost {
   }
 
   private halt(): void {
+    this.generation++;
     if (this.timer !== null) Tone.getContext().clearInterval(this.timer);
     this.timer = null;
     this.playing = false;
@@ -330,7 +347,8 @@ class AudioHost {
     // Fim da música sem loop: volta ao início.
     if (useTransport.getState().mode === "song" && !this.loopRegion()) {
       const end = songEndTicks(p);
-      if (end > 0 && this.position() >= end) this.stop();
+      // Fora do callback: o clearInterval do Tone não cancela um intervalo de dentro dele mesmo.
+      if (end > 0 && this.position() >= end) setTimeout(() => this.stop(), 0);
     }
   }
 

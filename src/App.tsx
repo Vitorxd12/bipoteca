@@ -12,6 +12,7 @@ import { PatternLibrary } from "./library/PatternLibrary";
 import { InstrumentPicker } from "./picker/InstrumentPicker";
 import { Playlist } from "./playlist/Playlist";
 import { useShortcuts } from "./shortcuts";
+import { useTransport } from "./store/transport";
 import { useUi } from "./store/ui";
 import { TransportBar } from "./transport/TransportBar";
 import { GestureHelp } from "./ui/GestureHelp";
@@ -48,13 +49,23 @@ export function App() {
   const libraryOpen = useUi((s) => s.libraryOpen);
   const editorMode = useUi((s) => s.editorMode);
   const ratio = useUi((s) => s.splitRatio);
+  const playing = useTransport((s) => s.playing);
   const main = useRef<HTMLDivElement>(null);
 
   return (
     <div className="relative h-full overflow-hidden bg-ink-950">
       {/* Fundo vivo atrás do vidro (React Bits). */}
       <div className="pointer-events-none absolute inset-0">
-        <Aurora colorStops={["#6b4cf0", "#8b6cff", "#c8ff3d"]} amplitude={1.3} blend={0.55} speed={0.35} />
+        {/* Pausa durante a reprodução: fundo animado atrás de vidro desfocado obriga o navegador
+            a redesfocar a tela inteira a cada quadro, e isso atrasa o agendador de áudio. */}
+        <Aurora
+          colorStops={["#6b4cf0", "#8b6cff", "#c8ff3d"]}
+          amplitude={1.3}
+          blend={0.55}
+          speed={0.35}
+          dpr={0.5}
+          paused={playing}
+        />
       </div>
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_120%_90%_at_50%_110%,transparent_10%,rgb(8_7_13/0.65)_70%)]" />
 

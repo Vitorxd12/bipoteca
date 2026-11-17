@@ -40,7 +40,7 @@ function PositionDisplay() {
   }, [playing, cursor]);
   return (
     <div
-      className="flex h-10 min-w-[124px] flex-col justify-center rounded-xl bg-black/35 px-3 ring-1 ring-white/[0.06] ring-inset"
+      className="flex h-10 min-w-[124px] flex-col justify-center rounded-xl bg-black/55 px-3 ring-1 ring-white/[0.06] ring-inset"
       title="Posição: compasso.tempo.semicolcheia"
     >
       <span
@@ -50,7 +50,7 @@ function PositionDisplay() {
           playing ? "text-volt-400" : "text-fg",
         )}
       />
-      <span className="mt-0.5 font-mono text-[8px] tracking-[0.2em] text-fg-faint">COMP . TEMPO . 1/16</span>
+      <span className="mt-0.5 font-mono text-[8px] tracking-[0.2em] text-fg-muted">COMP . TEMPO . 1/16</span>
     </div>
   );
 }
@@ -72,10 +72,10 @@ export function TransportBar() {
       width="100%"
       height={64}
       borderRadius={22}
-      blur={14}
-      brightness={30}
-      opacity={0.9}
-      backgroundOpacity={0.25}
+      blur={16}
+      brightness={22}
+      opacity={0.94}
+      backgroundOpacity={0.62}
       saturation={1.6}
       distortionScale={-90}
       className="shrink-0"
@@ -90,11 +90,11 @@ export function TransportBar() {
           >
             bipoteca
           </GradientText>
-          <div className="h-6 w-px bg-white/10" />
+          <div className="h-6 w-px bg-white/20" />
           <InlineEdit
             value={name}
             onCommit={(n) => useProject.getState().renameProject(n)}
-            className="max-w-44 text-sm font-medium text-fg-muted hover:text-fg"
+            className="max-w-44 text-sm font-semibold text-fg hover:text-volt-300"
             inputClassName="w-40 text-sm"
             title="Nome do projeto · duplo clique para renomear"
           />

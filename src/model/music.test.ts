@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { findOverflowNotes, formatPosition, isBlackKey, noteName, snapDown, snapRound, snapTicks } from "./music";
 import { type Note, PPQ, TICKS_PER_BAR } from "./types";
 
-const n = (id: string, start: number, duration: number, pitch = 60): Note => ({ id, pitch, start, duration, velocity: 0.8 });
+const n = (id: string, start: number, duration: number, pitch = 60): Note => ({
+  id,
+  pitch,
+  start,
+  duration,
+  velocity: 0.8,
+});
 
 describe("nomes e teclas", () => {
   it("C4 é o dó central (60)", () => {

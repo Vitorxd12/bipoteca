@@ -33,6 +33,8 @@ export interface Instrument {
   noteOff(note: number, time: number): void;
   /** Solta todas as notas (stop, troca de preset). */
   releaseAll(time: number): void;
+  /** Vozes soando agora (diagnóstico). Opcional: nem toda engine sabe. */
+  activeVoices?(): number;
   dispose(): void;
 }
 

@@ -15,7 +15,8 @@ if (import.meta.env.DEV) {
     import("./store/transport"),
     import("./audio/host"),
     import("./editor/view"),
-  ]).then(([project, ui, transport, audio, editor]) => {
+    import("tone"),
+  ]).then(([project, ui, transport, audio, editor, Tone]) => {
     Object.assign(window, {
       __bipoteca: {
         useProject: project.useProject,
@@ -23,6 +24,7 @@ if (import.meta.env.DEV) {
         useTransport: transport.useTransport,
         host: audio.host,
         useEditorView: editor.useEditorView,
+        Tone,
       },
     });
   });

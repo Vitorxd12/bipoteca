@@ -164,8 +164,8 @@ export function Playlist() {
     return () => ro.disconnect();
   }, []);
   const { scrollX, pxPerTick } = usePlaylistView();
-  const project = useProject((st) => st.project);
-  const songEnd = Math.max(songEndTicks(project), 16 * TICKS_PER_BAR);
+  // Só o número: assinar o projeto inteiro re-renderizava todas as trilhas a cada nota arrastada.
+  const songEnd = useProject((st) => Math.max(songEndTicks(st.project), 16 * TICKS_PER_BAR));
   const fitSong = () => {
     const ppt = clamp((gridW - 30) / (songEnd + TICKS_PER_BAR), PX_PER_TICK.min, PX_PER_TICK.max);
     usePlaylistView.getState().set({ pxPerTick: ppt, scrollX: -TICKS_PER_BAR * 0.15 });

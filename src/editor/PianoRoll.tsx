@@ -5,7 +5,7 @@
  *  duplo clique ........ seleciona todas as notas daquela altura
  *  roda ................ rola; Alt/Ctrl+roda muda a altura das teclas
  */
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import { host } from "@/audio/host";
 import { localPoint, useCanvas, wheelDelta } from "@/canvas/useCanvas";
 import { LIMITS } from "@/model/limits";
@@ -131,7 +131,7 @@ function PianoKeys({ trackId }: { trackId: string | null }) {
   );
 }
 
-export function PianoRoll({ trackId }: { trackId: string | null }) {
+export const PianoRoll = memo(function PianoRoll({ trackId }: { trackId: string | null }) {
   const body = useRef<HTMLDivElement>(null);
   const patternId = useUi((s) => s.openPatternId);
 
@@ -166,4 +166,4 @@ export function PianoRoll({ trackId }: { trackId: string | null }) {
       </div>
     </div>
   );
-}
+});

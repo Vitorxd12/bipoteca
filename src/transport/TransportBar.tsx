@@ -3,7 +3,7 @@
  *  Espaço ........ tocar/pausar      Enter ..... parar (volta ao início/loop)
  *  Ctrl+Z / Ctrl+Shift+Z ... desfazer / refazer
  */
-import { CircleHelp, Metronome, PanelBottom, Pause, Play, Redo2, Repeat, Square, Undo2 } from "lucide-react";
+import { CircleHelp, Metronome, Pause, Play, Redo2, Repeat, Square, Undo2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { host } from "@/audio/host";
 import GlassSurface from "@/components/GlassSurface";
@@ -61,8 +61,6 @@ export function TransportBar() {
   const name = useProject((s) => s.project.name);
   const canUndo = useHistory((s) => s.pastStates.length > 0);
   const canRedo = useHistory((s) => s.futureStates.length > 0);
-  const editorMode = useUi((s) => s.editorMode);
-  const openPatternId = useUi((s) => s.openPatternId);
 
   return (
     <GlassSurface
@@ -78,7 +76,7 @@ export function TransportBar() {
       className="shrink-0"
     >
       {/* Tinta escura própria: no modo fosco (Firefox/Safari) o GlassSurface clareia demais. */}
-      <div className="pointer-events-none absolute inset-0 -z-10 rounded-[20px] bg-ink-950/80 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.08)]" />
+      <div className="pointer-events-none absolute inset-0 -z-10 rounded-[20px] bg-gradient-to-b from-ink-700/55 via-ink-850/50 to-ink-900/55 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.07)]" />
       <div className="flex w-full items-center gap-3 px-2">
         {/* Marca e projeto */}
         <div className="flex min-w-0 items-center gap-3">
@@ -153,15 +151,6 @@ export function TransportBar() {
         </div>
 
         <div className="flex items-center">
-          <IconButton
-            label={editorMode === "closed" ? "Abrir editor" : "Fechar editor"}
-            active={editorMode !== "closed"}
-            tone="uv"
-            disabled={!openPatternId}
-            onClick={() => useUi.getState().setEditorMode(editorMode === "closed" ? "split" : "closed")}
-          >
-            <PanelBottom />
-          </IconButton>
           <IconButton label="Gestos e atalhos (?)" onClick={() => useUi.getState().setHelpOpen(true)}>
             <CircleHelp />
           </IconButton>

@@ -14,7 +14,7 @@
  *  alça ............. arrasta para reordenar
  */
 import { GripVertical, Play, Plus, Trash2, Volume2, VolumeX } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { host } from "@/audio/host";
 import { presetInfo } from "@/audio/registry";
 import { localPoint, roundRect, useCanvas, wheelDelta } from "@/canvas/useCanvas";
@@ -347,7 +347,7 @@ function KitGrid({ track }: { track: Track }) {
   );
 }
 
-function KitRowHeader({
+const KitRowHeader = memo(function KitRowHeader({
   track,
   row,
   index,
@@ -465,9 +465,9 @@ function KitRowHeader({
       </button>
     </div>
   );
-}
+});
 
-export function KitEditor({ track }: { track: Track }) {
+export const KitEditor = memo(function KitEditor({ track }: { track: Track }) {
   const kitScrollY = useEditorView((s) => s.kitScrollY);
   const headers = useRef<HTMLDivElement>(null);
   const [reorder, setReorder] = useState<{ id: string; target: number } | null>(null);
@@ -581,4 +581,4 @@ export function KitEditor({ track }: { track: Track }) {
       </div>
     </div>
   );
-}
+});

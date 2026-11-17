@@ -16,7 +16,7 @@ import { GLASS, IconButton, LABEL } from "@/ui/primitives";
 import { SnapMenu, type SnapOption } from "@/ui/SnapMenu";
 import { KitEditor } from "./KitEditor";
 import { PianoRoll } from "./PianoRoll";
-import { fitPattern, useOpenPattern } from "./view";
+import { fitPattern, useOpenPatternMeta } from "./view";
 
 const EDITOR_SNAPS: SnapOption<Snap>[] = [
   { value: "1/4", label: "1/4", hint: "Semínima · 4 por compasso", perBar: 4 },
@@ -64,7 +64,8 @@ function LengthStepper({ patternId, bars }: { patternId: string; bars: number })
 }
 
 export function EditorPanel() {
-  const pattern = useOpenPattern();
+  const meta = useOpenPatternMeta();
+  const pattern = meta.id ? meta : null;
   const editorTrackId = useUi((s) => s.editorTrackId);
   const mode = useUi((s) => s.editorMode);
   const snap = useUi((s) => s.editorSnap);

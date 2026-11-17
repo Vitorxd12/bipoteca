@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { useShallow } from "zustand/react/shallow";
 import { clamp } from "@/lib/utils";
 import { LIMITS } from "@/model/limits";
 import { type Note, type Pattern, TICKS_PER_BAR } from "@/model/types";
@@ -99,4 +100,20 @@ export function localPlayhead(tick: number): number | null {
 export function useOpenPattern(): Pattern | undefined {
   const id = useUi((s) => s.openPatternId);
   return useProject((s) => (id ? s.project.patterns[id] : undefined));
+}
+
+/**
+ * Só os dados de cabeçalho do pattern aberto (sem as notas): não muda enquanto
+ * se arrasta nota, então quem usa isto não re-renderiza a cada movimento.
+ */
+export function useOpenPatternMeta() {
+  const id = useUi((s) => s.openPatternId);
+  return useProject(
+    useShallow((s) => {
+      const p = id ? s.project.patterns[id] : undefined;
+      return p
+        ? { id: p.id, name: p.name, kind: p.kind, lengthBars: p.lengthBars, homeTrackId: p.homeTrackId }
+        : { id: "", name: "", kind: "instrument" as const, lengthBars: 0, homeTrackId: "" };
+    }),
+  );
 }

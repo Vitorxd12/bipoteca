@@ -90,8 +90,9 @@ function SoundCard({
 
 export function InstrumentPicker() {
   const target = useUi((s) => s.picker);
-  const project = useProject((s) => s.project);
-  const track = target ? project.tracks.find((t) => t.id === target.trackId) : undefined;
+  // Fechado, não assina o projeto (não re-renderiza a cada edição).
+  const project = useProject((s) => (target ? s.project : null));
+  const track = target && project ? project.tracks.find((t) => t.id === target.trackId) : undefined;
   const row = target?.type === "row" ? track?.kit.find((r) => r.id === target.rowId) : undefined;
   const kitMode = target?.type === "row";
   const current: PresetRef | null = row ? row.preset : (track?.preset ?? null);

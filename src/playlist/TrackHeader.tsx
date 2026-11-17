@@ -18,7 +18,7 @@ import {
   Piano,
   Trash2,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { presetInfo } from "@/audio/registry";
 import ElasticSlider from "@/components/ElasticSlider";
 import { cn } from "@/lib/utils";
@@ -29,7 +29,7 @@ import { useUi } from "@/store/ui";
 import { InlineEdit } from "@/ui/InlineEdit";
 import { showMenu } from "@/ui/overlays";
 
-export function TrackHeader({
+export const TrackHeader = memo(function TrackHeader({
   track,
   index,
   height,
@@ -257,4 +257,4 @@ export function TrackHeader({
       </div>
     </div>
   );
-}
+});

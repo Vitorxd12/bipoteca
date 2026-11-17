@@ -140,8 +140,13 @@ class AudioHost {
     setTimeout(() => inst.dispose(), 2500);
   }
 
+  private lastTracks: Project["tracks"] | null = null;
+
   private sync(project: Project): void {
     if (!this.started) return;
+    // Editar notas não mexe nas trilhas: nada para sincronizar no mixer.
+    if (project.tracks === this.lastTracks) return;
+    this.lastTracks = project.tracks;
     const anySolo = project.tracks.some((t) => t.solo);
     const seen = new Set<string>();
     for (const t of project.tracks) {

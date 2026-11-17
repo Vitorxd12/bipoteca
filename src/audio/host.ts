@@ -9,10 +9,17 @@
  *   valem na hora, sem reconstruir nada.
  * - Polifonia contada aqui (RF-69), igual para qualquer engine.
  */
-import * as Tone from "tone";
+import type * as ToneNS from "tone";
+
+/**
+ * Tone.js é carregado sob demanda no primeiro gesto (ensureStarted): a tela
+ * abre sem esperar a biblioteca de áudio. Só é usado depois de iniciado.
+ */
+let Tone: typeof ToneNS;
+
 import { LIMITS } from "@/model/limits";
 import { secondsPerTick } from "@/model/music";
-import { PPQ, type PresetRef, type Project, TICKS_PER_BAR, type Track } from "@/model/types";
+import { type Note, PPQ, type PresetRef, type Project, TICKS_PER_BAR, type Track } from "@/model/types";
 import { getProject, songEndTicks, useProject } from "@/store/project";
 import { useTransport } from "@/store/transport";
 import { useUi } from "@/store/ui";
@@ -38,13 +45,13 @@ interface ActiveVoice {
 }
 
 interface RowNode {
-  gain: Tone.Gain;
+  gain: ToneNS.Gain;
   slot: Slot;
 }
 
 interface TrackNode {
   kind: Track["kind"];
-  channel: Tone.Channel;
+  channel: ToneNS.Channel;
   slot: Slot | null;
   rows: Map<string, RowNode>;
   voices: ActiveVoice[];
@@ -58,13 +65,42 @@ interface Anchor {
 
 let slotToken = 0;
 
+/**
+ * Índice das notas de cada pattern, ordenadas pelo início. O array de notas é
+ * imutável no store, então ele mesmo serve de chave: editou, o índice refaz.
+ */
+const sortedNotes = new WeakMap<Note[], Note[]>();
+
+function notesStartingIn(notes: Note[], from: number, to: number): Note[] {
+  if (to <= from || !notes.length) return [];
+  let sorted = sortedNotes.get(notes);
+  if (!sorted) {
+    sorted = [...notes].sort((x, y) => x.start - y.start);
+    sortedNotes.set(notes, sorted);
+  }
+  let lo = 0;
+  let hi = sorted.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if ((sorted[mid]?.start ?? 0) < from) lo = mid + 1;
+    else hi = mid;
+  }
+  const out: Note[] = [];
+  for (let i = lo; i < sorted.length; i++) {
+    const n = sorted[i];
+    if (!n || n.start >= to) break;
+    out.push(n);
+  }
+  return out;
+}
+
 class AudioHost {
   private started = false;
   private starting: Promise<void> | null = null;
-  private master!: Tone.Volume;
+  private master!: ToneNS.Volume;
   private tracks = new Map<string, TrackNode>();
-  private metro: Tone.Synth | null = null;
-  private previewDest: Tone.Gain | null = null;
+  private metro: ToneNS.Synth | null = null;
+  private previewDest: ToneNS.Gain | null = null;
 
   private playing = false;
   private timer: number | null = null;
@@ -78,8 +114,12 @@ class AudioHost {
     if (this.started) return Promise.resolve();
     if (!this.starting) {
       this.starting = (async () => {
+        Tone = await import("tone");
+        // "balanced": buffers um pouco maiores que "interactive" e bem menos estalos
+        // quando a máquina aperta. Como tudo é agendado com antecedência, a latência
+        // extra não atrasa a música; só a pré-escuta, e pouco.
+        Tone.setContext(new Tone.Context({ latencyHint: "balanced", lookAhead: 0 }));
         await Tone.start();
-        Tone.getContext().lookAhead = 0;
         const limiter = new Tone.Limiter(-1).toDestination();
         this.master = new Tone.Volume(-3).connect(limiter);
         this.previewDest = new Tone.Gain(1).connect(this.master);
@@ -105,7 +145,7 @@ class AudioHost {
 
   // ---------------------------------------------------------------- mixer
 
-  private makeSlot(ref: PresetRef | null, dest: Tone.ToneAudioNode, prev?: Slot | null): Slot {
+  private makeSlot(ref: PresetRef | null, dest: ToneNS.ToneAudioNode, prev?: Slot | null): Slot {
     const key = presetKey(ref);
     if (prev && prev.key === key) return prev;
     if (prev) this.retire(prev);
@@ -284,6 +324,10 @@ class AudioHost {
 
   private halt(): void {
     this.generation++;
+    if (!this.started) {
+      this.playing = false;
+      return;
+    }
     if (this.timer !== null) Tone.getContext().clearInterval(this.timer);
     this.timer = null;
     this.playing = false;
@@ -375,25 +419,26 @@ class AudioHost {
       const pat = p.patterns[ui.openPatternId ?? ""];
       const track = p.tracks.find((t) => t.id === (ui.editorTrackId ?? pat?.homeTrackId));
       if (!pat || !track) return;
-      for (const n of pat.notes) {
-        if (n.start >= a && n.start < b)
-          this.trigger(track, n.pitch, n.velocity, t0 + (n.start - a) * spt, n.duration * spt);
-      }
+      for (const n of notesStartingIn(pat.notes, a, b))
+        this.trigger(track, n.pitch, n.velocity, t0 + (n.start - a) * spt, n.duration * spt);
       return;
     }
 
+    const trackById = new Map(p.tracks.map((t) => [t.id, t]));
     for (const clip of p.clips) {
+      if (clip.start >= b) continue;
       const pat = p.patterns[clip.patternId];
       if (!pat) continue;
       const len = pat.lengthBars * TICKS_PER_BAR;
-      if (clip.start >= b || clip.start + len <= a) continue;
-      const track = p.tracks.find((t) => t.id === clip.trackId);
+      if (clip.start + len <= a) continue;
+      const track = trackById.get(clip.trackId);
       if (!track || !audible(track)) continue;
-      for (const n of pat.notes) {
+      // Só as notas que começam dentro da janela (busca binária no índice ordenado).
+      const from = Math.max(0, a - clip.start);
+      const to = Math.min(len, b - clip.start);
+      for (const n of notesStartingIn(pat.notes, from, to)) {
         const at = clip.start + n.start;
-        if (at >= a && at < b && n.start < len) {
-          this.trigger(track, n.pitch, n.velocity, t0 + (at - a) * spt, Math.min(n.duration, len - n.start) * spt);
-        }
+        this.trigger(track, n.pitch, n.velocity, t0 + (at - a) * spt, Math.min(n.duration, len - n.start) * spt);
       }
     }
   }

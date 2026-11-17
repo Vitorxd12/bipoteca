@@ -234,12 +234,23 @@ function build(presetId: string): Voice {
     }
     case "sweep": {
       const out = new Tone.Gain(Tone.dbToGain(-10));
-      const filter = new Tone.AutoFilter({ frequency: 0.5, baseFrequency: 300, octaves: 5 }).start().connect(out);
+      // Filtro automatizado só quando toca (antes era um LFO rodando o tempo todo, mesmo calado).
+      const filter = new Tone.Filter({ frequency: 300, type: "lowpass", Q: 3 }).connect(out);
       const s = new Tone.NoiseSynth({
         noise: { type: "pink" },
         envelope: { attack: 0.4, decay: 0.3, sustain: 0.4, release: 0.8 },
       }).connect(filter);
-      return oneShot((_f, v, t) => s.triggerAttackRelease(0.9, t, v), out, [s, filter]);
+      return oneShot(
+        (_f, v, t) => {
+          filter.frequency.cancelScheduledValues(t);
+          filter.frequency.setValueAtTime(300, t);
+          filter.frequency.exponentialRampToValueAtTime(6000, t + 0.6);
+          filter.frequency.exponentialRampToValueAtTime(400, t + 1.6);
+          s.triggerAttackRelease(0.9, t, v);
+        },
+        out,
+        [s, filter],
+      );
     }
     case "kick-808": {
       const out = new Tone.Gain(Tone.dbToGain(-1));

@@ -20,13 +20,59 @@ import { host } from "@/audio/host";
 import { localPoint, roundRect, useCanvas, wheelDelta } from "@/canvas/useCanvas";
 import { usePlayhead } from "@/canvas/usePlayhead";
 import { snapDown, snapRound } from "@/model/music";
-import { type Clip, type Pattern, PPQ, TICKS_PER_BAR } from "@/model/types";
+import { type Clip, type Note, type Pattern, PPQ, TICKS_PER_BAR } from "@/model/types";
 import { beginGesture, endGesture, getProject, useProject } from "@/store/project";
 import { useTransport } from "@/store/transport";
 import { playlistSnapTicks, useUi } from "@/store/ui";
 import { alpha, C, FONT_SANS, kindColor } from "@/theme";
 import { showMenu } from "@/ui/overlays";
 import { libraryDrag, usePlaylistView, zoomAt } from "./view";
+
+/**
+ * Cache das miniaturas de clipe. A chave é o próprio array de notas (imutável no
+ * store): editou o pattern, a miniatura refaz; clipes repetidos reaproveitam.
+ */
+const thumbs = new WeakMap<Note[], Map<string, HTMLCanvasElement>>();
+
+function clipThumb(notes: Note[], lengthBars: number, w: number, area: number, pxPerTick: number, color: string) {
+  const W = Math.round(w);
+  const H = Math.round(area);
+  if (W < 2 || H < 2 || W > 4096) return null;
+  const dpr = window.devicePixelRatio || 1;
+  const key = `${W}x${H}@${dpr}:${color}`;
+  let bySize = thumbs.get(notes);
+  if (!bySize) {
+    bySize = new Map();
+    thumbs.set(notes, bySize);
+  }
+  const hit = bySize.get(key);
+  if (hit) return hit;
+  const cv = document.createElement("canvas");
+  cv.width = Math.round(W * dpr);
+  cv.height = Math.round(H * dpr);
+  const c = cv.getContext("2d");
+  if (!c) return null;
+  c.scale(dpr, dpr);
+  let lo = 127;
+  let hi = 0;
+  for (const n of notes) {
+    lo = Math.min(lo, n.pitch);
+    hi = Math.max(hi, n.pitch);
+  }
+  const span = Math.max(6, hi - lo + 1);
+  const nh = Math.max(1.5, Math.min(5, H / span));
+  const len = lengthBars * TICKS_PER_BAR;
+  c.fillStyle = color;
+  for (const n of notes) {
+    if (n.start >= len) continue;
+    const nw = Math.max(1.5, Math.min(n.duration, len - n.start) * pxPerTick - 1);
+    c.fillRect(n.start * pxPerTick, (1 - (n.pitch - lo + 0.5) / span) * (H - nh), nw, nh);
+  }
+  // Poucos tamanhos por pattern (zoom muda o tamanho): mantém os mais recentes.
+  if (bySize.size > 6) bySize.delete(bySize.keys().next().value as string);
+  bySize.set(key, cv);
+  return cv;
+}
 
 type Drag =
   | { kind: "press"; clipId: string; x0: number; y0: number; toggled: boolean }
@@ -177,27 +223,11 @@ export function PlaylistGrid() {
       ctx.fillStyle = alpha(col.base, isSel ? 0.95 : 0.7);
       ctx.fillRect(x, y, w, band);
 
-      // Miniatura das notas
+      // Miniatura das notas (desenhada uma vez por tamanho e reaproveitada).
       if (pat.notes.length) {
-        let lo = 127;
-        let hi = 0;
-        for (const n of pat.notes) {
-          lo = Math.min(lo, n.pitch);
-          hi = Math.max(hi, n.pitch);
-        }
-        const span = Math.max(6, hi - lo + 1);
-        const top = y + band + 4;
         const area = h - band - 8;
-        const nh = Math.max(1.5, Math.min(5, area / span));
-        const len = pat.lengthBars * TICKS_PER_BAR;
-        ctx.fillStyle = alpha(col.bright, 0.85);
-        for (const n of pat.notes) {
-          if (n.start >= len) continue;
-          const nx = x + n.start * pxPerTick;
-          const nw = Math.max(1.5, Math.min(n.duration, len - n.start) * pxPerTick - 1);
-          const ny = top + (1 - (n.pitch - lo + 0.5) / span) * (area - nh);
-          ctx.fillRect(nx, ny, nw, nh);
-        }
+        const thumb = clipThumb(pat.notes, pat.lengthBars, w, area, pxPerTick, alpha(col.bright, 0.85));
+        if (thumb) ctx.drawImage(thumb, x, y + band + 4, Math.round(w), Math.round(area));
       }
 
       // Nome

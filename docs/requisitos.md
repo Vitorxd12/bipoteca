@@ -305,6 +305,8 @@ Regras:
 - **Um relógio só.** O sequenciador do host decide quando cada nota toca e chama `noteOn` com horário exato. Nenhuma engine usa sequenciador próprio. Na implementação, o host não usa o `Tone.Transport`: tem um agendador próprio com antecedência de ~120 ms, disparado pelo ticker do Tone.js (que roda num Worker). Ele lê o projeto direto do store a cada janela, então edições durante a reprodução valem na hora, sem reconstruir partes.
 - **Um AudioContext só.** Todas as engines recebem o mesmo; cada `output` entra no canal de mixer da trilha.
 - **Exportação offline.** `create` recebe `BaseAudioContext`, então a mesma fábrica funciona num `OfflineAudioContext` para o RF-06.
+- **Latência "balanced".** O AudioContext usa buffers um pouco maiores que o padrão "interactive": menos estalos sob carga. Como tudo é agendado com antecedência, isso não atrasa a música, só um pouco a pré-escuta.
+- **Tone.js sob demanda.** A biblioteca é baixada no primeiro gesto do usuário; a tela abre sem esperar por ela.
 - **Polifonia contada pelo host.** O sequenciador sabe quais notas estão soando, então o RF-69 funciona igual para qualquer engine.
 - **Plugável.** Cada engine fica numa pasta própria e é carregada sob demanda com `import()` dinâmico. Adicionar ou remover é mexer na pasta e numa linha do registro.
 - **Mínimo denominador comum.** Recurso exclusivo de uma engine só aparece na interface com trabalho explícito. Para uma DAW limitada de propósito, isso é desejável.

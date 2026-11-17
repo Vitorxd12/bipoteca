@@ -3,17 +3,27 @@
  * por enquanto: abre direto no projeto salvo (ou no exemplo).
  */
 import { AnimatePresence, motion } from "motion/react";
-import { useRef } from "react";
+import { lazy, Suspense, useRef } from "react";
+
+// Modais carregados só na primeira vez que abrem: a tela inicial baixa menos código.
+const InstrumentPicker = lazy(() => import("./picker/InstrumentPicker").then((m) => ({ default: m.InstrumentPicker })));
+const GestureHelp = lazy(() => import("./ui/GestureHelp").then((m) => ({ default: m.GestureHelp })));
+
+/** Monta um componente preguiçoso a partir da primeira vez que `when` fica verdadeiro. */
+function MountOnce({ when, children }: { when: boolean; children: React.ReactNode }) {
+  const seen = useRef(false);
+  if (when) seen.current = true;
+  return seen.current ? <Suspense fallback={null}>{children}</Suspense> : null;
+}
+
 import Aurora from "./components/Aurora";
 import { EditorPanel } from "./editor/EditorPanel";
 import { cn } from "./lib/utils";
 import { PatternLibrary } from "./library/PatternLibrary";
-import { InstrumentPicker } from "./picker/InstrumentPicker";
 import { Playlist } from "./playlist/Playlist";
 import { useShortcuts } from "./shortcuts";
 import { useUi } from "./store/ui";
 import { TransportBar } from "./transport/TransportBar";
-import { GestureHelp } from "./ui/GestureHelp";
 import { ConfirmDialog, ContextMenu, Toasts } from "./ui/overlays";
 
 /** Divisória entre playlist e editor: arrastar redimensiona, duplo clique alterna tela cheia. */
@@ -47,6 +57,8 @@ export function App() {
   const libraryOpen = useUi((s) => s.libraryOpen);
   const editorMode = useUi((s) => s.editorMode);
   const ratio = useUi((s) => s.splitRatio);
+  const pickerOpen = useUi((s) => !!s.picker);
+  const helpOpen = useUi((s) => s.helpOpen);
   const main = useRef<HTMLDivElement>(null);
 
   return (
@@ -102,8 +114,12 @@ export function App() {
         </div>
       </div>
 
-      <InstrumentPicker />
-      <GestureHelp />
+      <MountOnce when={pickerOpen}>
+        <InstrumentPicker />
+      </MountOnce>
+      <MountOnce when={helpOpen}>
+        <GestureHelp />
+      </MountOnce>
       <ContextMenu />
       <ConfirmDialog />
       <Toasts />

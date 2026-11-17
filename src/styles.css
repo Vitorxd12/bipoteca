@@ -1,0 +1,148 @@
+@import "tailwindcss";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+@import "@fontsource-variable/unbounded";
+/*
+ * Paleta "Volt × Ultravioleta"
+ * Duas cores quase complementares sobre tinta escura arroxeada:
+ *   ultravioleta — trilhas de instrumento, seleção, foco
+ *   volt (lima elétrico) — trilhas de kit, reprodução, ação principal
+ * Coral fica reservado para avisos (polifonia, limites, erros).
+ */
+@theme {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+  --font-display: "Unbounded Variable", "Geist Variable", sans-serif;
+
+  --color-ink-950: #08070d;
+  --color-ink-900: #0e0c16;
+  --color-ink-850: #13101d;
+  --color-ink-800: #191525;
+  --color-ink-700: #241f33;
+  --color-ink-600: #322b46;
+  --color-ink-500: #4a4263;
+
+  --color-fg: #f4f1ff;
+  --color-fg-muted: #a8a0c2;
+  --color-fg-faint: #6e6787;
+
+  --color-uv-300: #c4b5ff;
+  --color-uv-400: #a891ff;
+  --color-uv-500: #8b6cff;
+  --color-uv-600: #6b4cf0;
+  --color-uv-700: #4b31b8;
+
+  --color-volt-300: #e2ff8a;
+  --color-volt-400: #d4ff5c;
+  --color-volt-500: #c8ff3d;
+  --color-volt-600: #a3d81c;
+  --color-volt-700: #6c9208;
+
+  --color-coral-400: #ff7a90;
+  --color-coral-500: #ff4f6d;
+
+  --radius-glass: 18px;
+
+  --shadow-glass:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.07), inset 0 0 0 1px rgb(255 255 255 / 0.05), 0 20px 50px -20px rgb(0 0 0 / 0.7);
+  --shadow-glow-uv: 0 0 24px -4px rgb(139 108 255 / 0.65);
+  --shadow-glow-volt: 0 0 24px -4px rgb(200 255 61 / 0.6);
+
+  --animate-pulse-warn: pulse-warn 0.9s ease-out;
+
+  --animate-first: move-vertical 30s ease infinite;
+  --animate-second: move-in-circle 20s reverse infinite;
+  --animate-third: move-in-circle 40s linear infinite;
+  --animate-fourth: move-horizontal 40s ease infinite;
+  --animate-fifth: move-in-circle 20s ease infinite;
+
+  @keyframes move-horizontal {
+    0% {
+      transform: translateX(-50%) translateY(-10%);
+    }
+    50% {
+      transform: translateX(50%) translateY(10%);
+    }
+    100% {
+      transform: translateX(-50%) translateY(-10%);
+    }
+  }
+  @keyframes move-in-circle {
+    0% {
+      transform: rotate(0deg);
+    }
+    50% {
+      transform: rotate(180deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes move-vertical {
+    0% {
+      transform: translateY(-50%);
+    }
+    50% {
+      transform: translateY(50%);
+    }
+    100% {
+      transform: translateY(-50%);
+    }
+  }
+  @keyframes pulse-warn {
+    0% {
+      box-shadow: 0 0 0 0 rgb(255 79 109 / 0.8);
+    }
+    100% {
+      box-shadow: 0 0 0 10px rgb(255 79 109 / 0);
+    }
+  }
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  :root {
+    color-scheme: dark;
+  }
+  body {
+    margin: 0;
+    background: var(--color-ink-950);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "tnum";
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    user-select: none;
+  }
+  ::selection {
+    background: rgb(139 108 255 / 0.4);
+  }
+  input,
+  select,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-uv-400);
+    outline-offset: 2px;
+  }
+}
+@theme inline {
+  --animate-shine: shine var(--duration) infinite linear;
+  @keyframes shine {
+    0% {
+      background-position: 0% 0%;
+    }
+    50% {
+      background-position: 100% 100%;
+    }
+    to {
+      background-position: 0% 0%;
+    }
+  }
+}

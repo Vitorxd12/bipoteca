@@ -1,0 +1,196 @@
+/**
+ * Barra de transporte (T3). Liquid glass da React Bits (GlassSurface).
+ *  Espaço ........ tocar/pausar      Enter ..... parar (volta ao início/loop)
+ *  Ctrl+Z / Ctrl+Shift+Z ... desfazer / refazer
+ */
+import { CircleHelp, Layers, PanelBottom, Pause, Play, Redo2, Repeat, Square, Timer, Undo2 } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { host } from "@/audio/host";
+import GlassSurface from "@/components/GlassSurface";
+import GooeyNav from "@/components/GooeyNav";
+import GradientText from "@/components/GradientText";
+import { BorderBeam } from "@/components/ui/border-beam";
+import { cn } from "@/lib/utils";
+import { formatPosition } from "@/model/music";
+import { redo, undo, useHistory, useProject } from "@/store/project";
+import { useTransport } from "@/store/transport";
+import { useUi } from "@/store/ui";
+import { InlineEdit } from "@/ui/InlineEdit";
+import { IconButton } from "@/ui/primitives";
+import { BpmControl } from "./BpmControl";
+
+function PositionDisplay() {
+  const ref = useRef<HTMLSpanElement>(null);
+  const playing = useTransport((s) => s.playing);
+  const cursor = useTransport((s) => s.cursor);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (!playing) {
+      el.textContent = formatPosition(cursor);
+      return;
+    }
+    let raf = 0;
+    const loop = () => {
+      el.textContent = formatPosition(host.position());
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [playing, cursor]);
+  return (
+    <div
+      className="flex h-10 min-w-[124px] flex-col justify-center rounded-xl bg-black/35 px-3 ring-1 ring-white/[0.06] ring-inset"
+      title="Posição: compasso.tempo.semicolcheia"
+    >
+      <span
+        ref={ref}
+        className={cn(
+          "font-mono text-lg leading-none font-semibold tracking-tight",
+          playing ? "text-volt-400" : "text-fg",
+        )}
+      />
+      <span className="mt-0.5 font-mono text-[8px] tracking-[0.2em] text-fg-faint">COMP . TEMPO . 1/16</span>
+    </div>
+  );
+}
+
+export function TransportBar() {
+  const playing = useTransport((s) => s.playing);
+  const mode = useTransport((s) => s.mode);
+  const metronome = useTransport((s) => s.metronome);
+  const loop = useProject((s) => s.project.loop);
+  const name = useProject((s) => s.project.name);
+  const canUndo = useHistory((s) => s.pastStates.length > 0);
+  const canRedo = useHistory((s) => s.futureStates.length > 0);
+  const libraryOpen = useUi((s) => s.libraryOpen);
+  const editorMode = useUi((s) => s.editorMode);
+  const openPatternId = useUi((s) => s.openPatternId);
+
+  return (
+    <GlassSurface
+      width="100%"
+      height={64}
+      borderRadius={22}
+      blur={14}
+      brightness={30}
+      opacity={0.9}
+      backgroundOpacity={0.25}
+      saturation={1.6}
+      distortionScale={-90}
+      className="shrink-0"
+    >
+      <div className="flex w-full items-center gap-3 px-2">
+        {/* Marca e projeto */}
+        <div className="flex min-w-0 items-center gap-3">
+          <GradientText
+            colors={["#c8ff3d", "#8b6cff", "#c4b5ff", "#c8ff3d"]}
+            animationSpeed={8}
+            className="font-display text-[19px] font-bold tracking-tight"
+          >
+            bipoteca
+          </GradientText>
+          <div className="h-6 w-px bg-white/10" />
+          <InlineEdit
+            value={name}
+            onCommit={(n) => useProject.getState().renameProject(n)}
+            className="max-w-44 text-sm font-medium text-fg-muted hover:text-fg"
+            inputClassName="w-40 text-sm"
+            title="Nome do projeto · duplo clique para renomear"
+          />
+          <div className="flex">
+            <IconButton label="Desfazer (Ctrl+Z)" onClick={undo} disabled={!canUndo}>
+              <Undo2 />
+            </IconButton>
+            <IconButton label="Refazer (Ctrl+Shift+Z)" onClick={redo} disabled={!canRedo}>
+              <Redo2 />
+            </IconButton>
+          </div>
+        </div>
+
+        <div className="flex flex-1 items-center justify-center gap-2">
+          <IconButton
+            label="Parar (Enter) — volta ao início ou ao começo do loop"
+            size="lg"
+            onClick={() => host.stop()}
+          >
+            <Square className="fill-current" />
+          </IconButton>
+          <button
+            type="button"
+            onClick={() => host.togglePlay()}
+            aria-label={playing ? "Pausar (Espaço)" : "Tocar (Espaço)"}
+            title={playing ? "Pausar (Espaço)" : "Tocar (Espaço)"}
+            className={cn(
+              "relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl transition-all duration-200 active:scale-90",
+              playing
+                ? "bg-volt-500 text-ink-950 shadow-[0_0_36px_-4px_var(--color-volt-500)]"
+                : "bg-white/[0.08] text-fg ring-1 ring-white/10 ring-inset hover:bg-volt-500 hover:text-ink-950 hover:shadow-[0_0_30px_-6px_var(--color-volt-500)]",
+            )}
+          >
+            {playing ? <Pause className="size-5 fill-current" /> : <Play className="ml-0.5 size-5 fill-current" />}
+            {playing && <BorderBeam size={40} duration={2.4} colorFrom="#ffffff" colorTo="#8b6cff" borderWidth={2} />}
+          </button>
+          <PositionDisplay />
+          <BpmControl />
+          <IconButton
+            label={loop.enabled ? "Loop ligado (duplo clique na régua alterna)" : "Loop desligado"}
+            size="lg"
+            tone="volt"
+            active={loop.enabled}
+            onClick={() => useProject.getState().setLoop({ enabled: !loop.enabled })}
+          >
+            <Repeat />
+          </IconButton>
+          <IconButton
+            label="Metrônomo"
+            size="lg"
+            tone="uv"
+            active={metronome}
+            onClick={() => useTransport.getState().toggleMetronome()}
+          >
+            <Timer />
+          </IconButton>
+          <div className="ml-1" title="O que toca: a música inteira ou só o pattern aberto (RF-12)">
+            <GooeyNav
+              items={[{ label: "Música" }, { label: "Pattern" }]}
+              activeIndex={mode === "song" ? 0 : 1}
+              onChange={(i) => {
+                if (i === 1 && !openPatternId) return;
+                useTransport.getState().setMode(i === 0 ? "song" : "pattern");
+              }}
+              size="sm"
+              color={mode === "song" ? "#8b6cff" : "#c8ff3d"}
+              activeTextColor="#08070d"
+              colors={["#8b6cff", "#c8ff3d", "#c4b5ff"]}
+              particleCount={10}
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center">
+          <IconButton
+            label="Biblioteca de patterns"
+            active={libraryOpen}
+            tone="uv"
+            onClick={() => useUi.getState().toggleLibrary()}
+          >
+            <Layers />
+          </IconButton>
+          <IconButton
+            label={editorMode === "closed" ? "Abrir editor" : "Fechar editor"}
+            active={editorMode !== "closed"}
+            tone="uv"
+            disabled={!openPatternId}
+            onClick={() => useUi.getState().setEditorMode(editorMode === "closed" ? "split" : "closed")}
+          >
+            <PanelBottom />
+          </IconButton>
+          <IconButton label="Gestos e atalhos (?)" onClick={() => useUi.getState().setHelpOpen(true)}>
+            <CircleHelp />
+          </IconButton>
+        </div>
+      </div>
+    </GlassSurface>
+  );
+}

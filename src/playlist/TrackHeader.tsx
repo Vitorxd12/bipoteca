@@ -13,12 +13,14 @@ import {
   ArrowUp,
   Drum,
   GripVertical,
+  Headphones,
   MoreHorizontal,
   Pencil,
   Piano,
   Trash2,
   Volume1,
   Volume2,
+  VolumeX,
 } from "lucide-react";
 import { memo, useEffect, useState } from "react";
 import { presetInfo } from "@/audio/registry";
@@ -86,6 +88,17 @@ export const TrackHeader = memo(function TrackHeader({
         icon: kit ? <Drum /> : <Piano />,
         onSelect: () => openSound(),
       },
+      {
+        label: track.muted ? "Tirar o mute" : "Mute (silenciar)",
+        icon: track.muted ? <Volume2 /> : <VolumeX />,
+        onSelect: () => actions.updateTrack(track.id, { muted: !track.muted }),
+      },
+      {
+        label: track.solo ? "Tirar o solo" : "Solo (só esta trilha)",
+        icon: <Headphones />,
+        onSelect: () => actions.updateTrack(track.id, { solo: !track.solo }),
+      },
+      "sep",
       { label: "Renomear", icon: <Pencil />, hint: "2× clique", onSelect: () => setRenaming(true) },
       { label: "Volume 100%", icon: <Volume2 />, onSelect: () => actions.updateTrack(track.id, { volume: 1 }) },
       { label: "Volume 80%", icon: <Volume2 />, onSelect: () => actions.updateTrack(track.id, { volume: 0.8 }) },
@@ -167,40 +180,27 @@ export const TrackHeader = memo(function TrackHeader({
             {kit ? `Kit · ${track.kit.length}` : (preset?.name ?? "—")}
           </span>
         </button>
-        <div className="flex shrink-0 flex-col justify-center gap-1 pr-1">
-          <button
-            type="button"
-            onClick={() => actions.updateTrack(track.id, { muted: !track.muted })}
-            className={cn(
-              "h-5 w-5 rounded-md font-mono text-[9px] font-bold",
-              track.muted ? "bg-coral-500 text-ink-950" : "bg-white/[0.06] text-fg-faint",
+        {(track.muted || track.solo) && (
+          <div className="flex shrink-0 flex-col justify-center gap-1 pr-1">
+            {track.muted && (
+              <span className="rounded bg-coral-500 px-1 font-mono text-[8px] font-bold text-ink-950">M</span>
             )}
-            aria-pressed={track.muted}
-            aria-label="Mute"
-          >
-            M
-          </button>
-          <button
-            type="button"
-            onClick={() => actions.updateTrack(track.id, { solo: !track.solo })}
-            className={cn(
-              "h-5 w-5 rounded-md font-mono text-[9px] font-bold",
-              track.solo
-                ? kit
-                  ? "bg-volt-500 text-ink-950"
-                  : "bg-uv-500 text-ink-950"
-                : "bg-white/[0.06] text-fg-faint",
+            {track.solo && (
+              <span
+                className={cn(
+                  "rounded px-1 font-mono text-[8px] font-bold text-ink-950",
+                  kit ? "bg-volt-500" : "bg-uv-500",
+                )}
+              >
+                S
+              </span>
             )}
-            aria-pressed={track.solo}
-            aria-label="Solo"
-          >
-            S
-          </button>
-        </div>
+          </div>
+        )}
         {warnVisible && drop && (
           <span
             key={drop.at}
-            className="absolute top-1 right-7 flex h-4 animate-pulse-warn items-center rounded-full bg-coral-500 px-1 font-mono text-[8px] font-bold text-ink-950"
+            className="absolute top-1 right-1 flex h-4 animate-pulse-warn items-center rounded-full bg-coral-500 px-1 font-mono text-[8px] font-bold text-ink-950"
           >
             -{drop.missing}
           </span>

@@ -91,7 +91,7 @@ function AddTrackButton() {
 }
 
 const HEADER_W = 232;
-const HEADER_W_MOBILE = 96;
+const HEADER_W_MOBILE = 84;
 const RULER_H = 34;
 
 export function Playlist() {

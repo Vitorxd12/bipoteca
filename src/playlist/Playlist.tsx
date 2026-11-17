@@ -1,6 +1,5 @@
 import { Drum, PanelLeftOpen, Piano, Plus, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { KIT_PRESETS } from "@/audio/presets";
 import { localPoint, wheelDelta } from "@/canvas/useCanvas";
 import { clamp, cn } from "@/lib/utils";
 import { LIMITS } from "@/model/limits";
@@ -66,30 +65,24 @@ function AddTrackButton() {
               </span>
             </span>
           </button>
-          <div className="px-2.5 pt-2 pb-1 text-[10px] font-semibold tracking-[0.14em] text-fg-faint uppercase">
-            Kit · um som por linha
-          </div>
-          <div className="grid grid-cols-2 gap-1">
-            {KIT_PRESETS.map((k) => (
-              <button
-                key={k.id}
-                type="button"
-                onClick={() => {
-                  add("kit", k.id);
-                  close();
-                }}
-                className="flex items-start gap-2 rounded-xl p-2 text-left transition hover:bg-volt-500/12"
-              >
-                <Drum className="mt-0.5 size-3.5 shrink-0 text-volt-400" />
-                <span className="min-w-0">
-                  <span className="block truncate text-[12px] font-semibold">{k.name}</span>
-                  <span className="block text-[10px] text-fg-faint">
-                    {k.rows.length ? `${k.rows.length} sons` : "sem sons"}
-                  </span>
-                </span>
-              </button>
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              close();
+              useUi.getState().openKitBrowser({ mode: "create" });
+            }}
+            className="flex w-full items-start gap-3 rounded-xl p-2.5 text-left transition hover:bg-volt-500/12"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-volt-500 text-ink-950">
+              <Drum className="size-4" />
+            </span>
+            <span>
+              <span className="block text-[13px] font-semibold">Kit</span>
+              <span className="block text-[11px] text-fg-faint">
+                Um som por linha. Escolha entre máquinas clássicas, kits sintetizados ou os seus
+              </span>
+            </span>
+          </button>
         </div>
       )}
     </Popover>

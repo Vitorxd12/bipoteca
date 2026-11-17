@@ -13,7 +13,7 @@
  *  chip do som ...... troca o sintetizador da linha
  *  alça ............. arrasta para reordenar
  */
-import { GripVertical, Play, Plus, Trash2, Volume2, VolumeX } from "lucide-react";
+import { GripVertical, Package, Play, Plus, Trash2, Volume2, VolumeX } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { host } from "@/audio/host";
 import { presetInfo } from "@/audio/registry";
@@ -32,7 +32,6 @@ import { alpha, C, FONT_SANS } from "@/theme";
 import { InlineEdit } from "@/ui/InlineEdit";
 import { EditorRuler } from "./EditorRuler";
 import { EditorScrollbar } from "./EditorScrollbar";
-import { KitPresetMenu } from "./KitPresetMenu";
 import { VelocityLane } from "./VelocityLane";
 import {
   EDITOR_RULER_H,
@@ -521,7 +520,14 @@ export const KitEditor = memo(function KitEditor({ track }: { track: Track }) {
       }}
     >
       <div className="flex items-center gap-2 border-r border-b border-white/[0.06] bg-ink-900 px-2">
-        <KitPresetMenu track={track} />
+        <button
+          type="button"
+          onClick={() => useUi.getState().openKitBrowser({ mode: "replace", trackId: track.id })}
+          className="flex h-6 items-center gap-1.5 rounded-lg bg-volt-500/12 px-2 text-[11px] font-semibold text-volt-300 transition hover:bg-volt-500 hover:text-ink-950"
+          title="Trocar o kit inteiro: máquinas clássicas, sintetizados ou os seus"
+        >
+          <Package className="size-3.5" /> Kits
+        </button>
         <div className="flex-1" />
         <span className="font-mono text-[10px] text-fg-faint">
           {track.kit.length}/{LIMITS.kitRows} sons

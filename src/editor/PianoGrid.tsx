@@ -259,7 +259,8 @@ export function PianoGrid({ trackId }: { trackId: string | null }) {
     el.setPointerCapture(e.pointerId);
     const hit = hitNote(x, y);
 
-    const now = performance.now();
+    // Horário do evento (não do processamento): continua certo mesmo com a página ocupada.
+    const now = e.timeStamp;
     const isDouble = !!hit && lastDown.current?.id === hit.note.id && now - lastDown.current.t < 350;
     lastDown.current = hit ? { id: hit.note.id, t: now } : null;
     if (hit && isDouble) {

@@ -90,6 +90,16 @@ export const TrackHeader = memo(function TrackHeader({
         disabled: index === n - 1,
         onSelect: () => actions.moveTrack(track.id, index + 1),
       },
+      ...(kit
+        ? [
+            "sep" as const,
+            {
+              label: "Trocar kit…",
+              icon: <Drum />,
+              onSelect: () => useUi.getState().openKitBrowser({ mode: "replace", trackId: track.id }),
+            },
+          ]
+        : []),
       "sep",
       { label: "Remover trilha", icon: <Trash2 />, danger: true, onSelect: () => void remove() },
     ]);

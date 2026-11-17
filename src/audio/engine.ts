@@ -26,6 +26,10 @@ export interface PresetInfo {
   oneShot?: boolean;
   /** Família dentro da percussão, para organizar o seletor dos kits. */
   group?: PercGroup;
+  /** De onde vem o som: "Sintetizado" ou o nome da máquina/banco de samples. */
+  source?: string;
+  /** Precisa baixar samples na primeira vez (mostra aviso de carregamento). */
+  sampled?: boolean;
 }
 
 export type PercGroup = "bumbo" | "caixa" | "prato" | "perc" | "fx";

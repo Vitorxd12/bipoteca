@@ -1,5 +1,4 @@
 /** Projeto de exemplo carregado na primeira abertura. */
-import { KIT_TEMPLATES } from "@/audio/presets";
 import { uid } from "@/lib/utils";
 import { type Clip, type KitRow, type Note, type Pattern, PPQ, type Project, TICKS_PER_BAR, type Track } from "./types";
 
@@ -13,7 +12,17 @@ const note = (pitch: number, start: number, duration: number, velocity = 0.8): N
 });
 
 export function demoProject(): Project {
-  const kit: KitRow[] = (KIT_TEMPLATES.drums?.rows ?? []).map((r, i) => ({
+  // Bateria de exemplo: samples da LM-2 (bumbo, caixa, chimbais, palma, tom).
+  const lm2 = (id: string, name: string) => ({ name, preset: { engine: "samples", preset: `dm:lm2:${id}` } });
+  const demoKit = [
+    lm2("kick", "Bumbo"),
+    lm2("snare-m", "Caixa"),
+    lm2("hhclosed", "Chimbal fechado"),
+    lm2("hhopen", "Chimbal aberto"),
+    lm2("clap", "Palma"),
+    lm2("tom-m", "Tom"),
+  ];
+  const kit: KitRow[] = demoKit.map((r, i) => ({
     id: uid("r"),
     name: r.name,
     preset: r.preset,
@@ -50,7 +59,7 @@ export function demoProject(): Project {
     volume: 0.7,
     muted: false,
     solo: false,
-    preset: { engine: "tone", preset: "epiano" },
+    preset: { engine: "samples", preset: "sf:epiano-sf" },
     kit: [],
   };
   const lead: Track = {

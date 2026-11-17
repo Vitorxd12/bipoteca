@@ -5,6 +5,7 @@
 import type { PresetRef } from "@/model/types";
 import type { InstrumentEngine, PresetInfo } from "./engine";
 import { TONE_PRESETS } from "./presets";
+import { SAMPLE_PRESETS } from "./samplePresets";
 
 interface EngineEntry {
   name: string;
@@ -14,6 +15,11 @@ interface EngineEntry {
 
 export const ENGINES: Record<string, EngineEntry> = {
   tone: { name: "Tone.js", presets: TONE_PRESETS, load: () => import("./engines/tone").then((m) => m.toneEngine) },
+  samples: {
+    name: "Samples",
+    presets: SAMPLE_PRESETS,
+    load: () => import("./engines/samples").then((m) => m.samplesEngine),
+  },
 };
 
 const loaded = new Map<string, Promise<InstrumentEngine>>();

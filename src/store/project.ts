@@ -2,6 +2,7 @@ import { temporal } from "zundo";
 import { create, useStore } from "zustand";
 import { DEFAULT_PRESETS, KIT_TEMPLATES, type KitTemplateId } from "@/audio/presets";
 import { clamp, uid } from "@/lib/utils";
+import { matchKitRows } from "@/model/kitMatch";
 import { LIMIT_LABELS, LIMITS } from "@/model/limits";
 import {
   type Clip,
@@ -283,9 +284,12 @@ export const useProject = create<ProjectState>()(
           const track = get().project.tracks.find((t) => t.id === trackId);
           if (!track) return;
           if (rows.length > LIMITS.kitRows) limitHit("kitRows");
+          const wanted = rows.slice(0, LIMITS.kitRows);
+          // Cada som novo herda a linha antiga que faz o mesmo papel (e as notas dela).
+          const { pairs, lost } = matchKitRows(track.kit, wanted);
           const kit: KitRow[] = [];
-          for (const [i, r] of rows.slice(0, LIMITS.kitRows).entries()) {
-            const old = track.kit[i];
+          for (const [i, r] of wanted.entries()) {
+            const old = pairs[i];
             kit.push({
               id: old?.id ?? uid("r"),
               name: r.name,
@@ -296,8 +300,8 @@ export const useProject = create<ProjectState>()(
             });
           }
           update((p) => {
-            // Linhas que sobraram somem junto com as notas delas.
-            const removed = new Set(track.kit.slice(kit.length).map((r) => r.note));
+            // Linhas antigas sem par somem junto com as notas delas.
+            const removed = new Set(lost.map((r) => r.note));
             const patterns = { ...p.patterns };
             if (removed.size) {
               const ids = new Set(p.clips.filter((c) => c.trackId === trackId).map((c) => c.patternId));

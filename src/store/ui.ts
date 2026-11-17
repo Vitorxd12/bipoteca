@@ -10,6 +10,9 @@ export type FocusZone = "playlist" | "editor" | "library";
 
 export type PickerTarget = { type: "track"; trackId: string } | { type: "row"; trackId: string; rowId: string };
 
+/** Navegador de kits: criar trilha nova ou trocar o kit de uma trilha. */
+export type KitBrowserTarget = { mode: "create" } | { mode: "replace"; trackId: string };
+
 export interface ConfirmRequest {
   title: string;
   message: string;
@@ -31,6 +34,7 @@ interface UiState {
   selectedNoteIds: string[];
   lastNoteLength: number;
   picker: PickerTarget | null;
+  kitBrowser: KitBrowserTarget | null;
   confirm: ConfirmRequest | null;
   zone: FocusZone;
   helpOpen: boolean;
@@ -47,6 +51,8 @@ interface UiState {
   setLastNoteLength: (t: number) => void;
   openPicker: (t: PickerTarget) => void;
   closePicker: () => void;
+  openKitBrowser: (t: KitBrowserTarget) => void;
+  closeKitBrowser: () => void;
   askConfirm: (req: Omit<ConfirmRequest, "resolve">) => Promise<boolean>;
   resolveConfirm: (ok: boolean) => void;
   setZone: (z: FocusZone) => void;
@@ -65,6 +71,7 @@ export const useUi = create<UiState>((set, get) => ({
   selectedNoteIds: [],
   lastNoteLength: PPQ / 2,
   picker: null,
+  kitBrowser: null,
   confirm: null,
   zone: "playlist",
   helpOpen: false,
@@ -95,6 +102,8 @@ export const useUi = create<UiState>((set, get) => ({
   setLastNoteLength: (lastNoteLength) => set({ lastNoteLength }),
   openPicker: (picker) => set({ picker }),
   closePicker: () => set({ picker: null }),
+  openKitBrowser: (kitBrowser) => set({ kitBrowser }),
+  closeKitBrowser: () => set({ kitBrowser: null }),
   askConfirm: (req) =>
     new Promise<boolean>((resolve) => {
       get().confirm?.resolve(false);

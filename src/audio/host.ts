@@ -21,6 +21,7 @@ import { LIMITS } from "@/model/limits";
 import { secondsPerTick } from "@/model/music";
 import { type Note, PPQ, type PresetRef, type Project, TICKS_PER_BAR, type Track } from "@/model/types";
 import { getProject, songEndTicks, useProject } from "@/store/project";
+import { toast } from "@/store/toast";
 import { useTransport } from "@/store/transport";
 import { useUi } from "@/store/ui";
 import type { Instrument } from "./engine";
@@ -120,8 +121,12 @@ class AudioHost {
         // extra não atrasa a música; só a pré-escuta, e pouco.
         Tone.setContext(new Tone.Context({ latencyHint: "balanced", lookAhead: 0 }));
         await Tone.start();
+        // Master: compressor leve de "cola" antes do limitador; deixa a mistura mais encorpada.
         const limiter = new Tone.Limiter(-1).toDestination();
-        this.master = new Tone.Volume(-3).connect(limiter);
+        const glue = new Tone.Compressor({ threshold: -18, ratio: 2.5, attack: 0.012, release: 0.18, knee: 8 }).connect(
+          limiter,
+        );
+        this.master = new Tone.Volume(-2).connect(glue);
         this.previewDest = new Tone.Gain(1).connect(this.master);
         this.metro = new Tone.Synth({
           oscillator: { type: "square" },
@@ -165,6 +170,8 @@ class AudioHost {
       })
       .catch((e: unknown) => {
         console.error(e);
+        const name = presetInfo(ref)?.name ?? ref.preset;
+        toast(`Não foi possível carregar "${name}". Os sons sampleados precisam de internet na primeira vez.`, "error");
         return null;
       });
     return slot;

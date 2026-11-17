@@ -32,7 +32,7 @@ export function useShortcuts(): void {
     const onKey = (e: KeyboardEvent) => {
       if (typing(e)) return;
       const ui = useUi.getState();
-      if (ui.picker || ui.confirm || ui.helpOpen) return;
+      if (ui.picker || ui.kitBrowser || ui.confirm || ui.helpOpen) return;
       const mod = e.ctrlKey || e.metaKey;
       const k = e.key.toLowerCase();
       const editor = ui.zone === "editor" && ui.editorMode !== "closed" && ui.openPatternId;

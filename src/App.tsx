@@ -7,6 +7,7 @@ import { lazy, Suspense, useRef } from "react";
 
 // Modais carregados só na primeira vez que abrem: a tela inicial baixa menos código.
 const InstrumentPicker = lazy(() => import("./picker/InstrumentPicker").then((m) => ({ default: m.InstrumentPicker })));
+const KitBrowser = lazy(() => import("./kits/KitBrowser").then((m) => ({ default: m.KitBrowser })));
 const GestureHelp = lazy(() => import("./ui/GestureHelp").then((m) => ({ default: m.GestureHelp })));
 
 /** Monta um componente preguiçoso a partir da primeira vez que `when` fica verdadeiro. */
@@ -59,6 +60,7 @@ export function App() {
   const ratio = useUi((s) => s.splitRatio);
   const pickerOpen = useUi((s) => !!s.picker);
   const helpOpen = useUi((s) => s.helpOpen);
+  const kitBrowserOpen = useUi((s) => !!s.kitBrowser);
   const main = useRef<HTMLDivElement>(null);
 
   return (
@@ -116,6 +118,9 @@ export function App() {
 
       <MountOnce when={pickerOpen}>
         <InstrumentPicker />
+      </MountOnce>
+      <MountOnce when={kitBrowserOpen}>
+        <KitBrowser />
       </MountOnce>
       <MountOnce when={helpOpen}>
         <GestureHelp />

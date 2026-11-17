@@ -4,6 +4,7 @@
  */
 import type { PresetRef } from "@/model/types";
 import type { PercGroup, PresetCategory, PresetInfo } from "./engine";
+import { DRUM_MACHINES, machineKit } from "./samplePresets";
 
 const p = (
   id: string,
@@ -12,7 +13,15 @@ const p = (
   description: string,
   defaultNote: number,
   group?: PercGroup,
-): PresetInfo => ({ id, name, category, description, defaultNote, ...(group ? { group, oneShot: true } : {}) });
+): PresetInfo => ({
+  id,
+  name,
+  category,
+  description,
+  defaultNote,
+  source: "Sintetizado",
+  ...(group ? { group, oneShot: true } : {}),
+});
 
 export const TONE_PRESETS: PresetInfo[] = [
   p("sub", "Sub Redondo", "baixo", "Seno grave e limpo", 36),
@@ -66,17 +75,30 @@ export interface KitPreset {
   id: string;
   name: string;
   description: string;
+  /** "samples" = máquina clássica sampleada; "synth" = sintetizado aqui. */
+  kind?: "samples" | "synth" | "user";
   rows: { name: string; preset: PresetRef }[];
 }
 
 const r = (name: string, preset: string) => ({ name, preset: { engine: "tone", preset } });
 
+/** Máquinas clássicas sampleadas, com os sons essenciais primeiro. */
+const MACHINE_KITS: KitPreset[] = DRUM_MACHINES.map((m) => ({
+  id: `m-${m.id}`,
+  name: m.label,
+  description: m.description,
+  kind: "samples",
+  rows: machineKit(m).slice(0, 10),
+}));
+
 /** Kits prontos: um kit é qualquer conjunto de sons, não só bateria. */
 export const KIT_PRESETS: KitPreset[] = [
+  ...MACHINE_KITS,
   {
     id: "drums",
     name: "Bateria básica",
     description: "O essencial para qualquer batida",
+    kind: "synth",
     rows: [
       r("Bumbo", "kick"),
       r("Caixa", "snare"),
@@ -90,6 +112,7 @@ export const KIT_PRESETS: KitPreset[] = [
     id: "808",
     name: "Eletrônica 808",
     description: "Grave comprido, palma e cowbell",
+    kind: "synth",
     rows: [
       r("Bumbo 808", "kick-808"),
       r("Palma", "clap"),
@@ -105,6 +128,7 @@ export const KIT_PRESETS: KitPreset[] = [
     id: "seco",
     name: "Seco",
     description: "Curto e próximo, bom para lo-fi",
+    kind: "synth",
     rows: [
       r("Bumbo", "kick-punch"),
       r("Caixa", "snare-tight"),
@@ -118,6 +142,7 @@ export const KIT_PRESETS: KitPreset[] = [
     id: "perc",
     name: "Percussão",
     description: "Peles e madeiras, sem bumbo nem caixa",
+    kind: "synth",
     rows: [
       r("Conga", "conga"),
       r("Tom", "tom"),
@@ -131,9 +156,10 @@ export const KIT_PRESETS: KitPreset[] = [
     id: "fx",
     name: "Efeitos",
     description: "Para transições e acentos",
+    kind: "synth",
     rows: [r("Subida", "riser"), r("Impacto", "impact"), r("Varredura", "sweep"), r("Zap", "zap"), r("Blip", "blip")],
   },
-  { id: "empty", name: "Vazio", description: "Comece do zero", rows: [] },
+  { id: "empty", name: "Vazio", description: "Comece do zero", kind: "synth", rows: [] },
 ];
 
 export type KitTemplateId = string;

@@ -75,6 +75,16 @@ function SoundCard({
           <span className="truncate font-mono text-[9px] tracking-wider text-fg-faint uppercase">
             {kitMode ? groupLabel(groupOf(entry.preset)) : CATEGORY_LABELS[entry.preset.category]}
           </span>
+          {entry.preset.source && (
+            <span
+              className={cn(
+                "shrink-0 rounded px-1 font-mono text-[9px]",
+                entry.preset.sampled ? "bg-volt-500/15 text-volt-300" : "bg-white/[0.06] text-fg-faint",
+              )}
+            >
+              {entry.preset.source}
+            </span>
+          )}
           {current && (
             <span className="ml-auto flex items-center gap-1 rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-semibold text-fg-muted">
               <Check className="size-2.5" /> atual
@@ -99,6 +109,7 @@ export function InstrumentPicker() {
   const targetKey = target ? (target.type === "row" ? target.rowId : target.trackId) : "";
 
   const [filter, setFilter] = useState<string>("todos");
+  const [source, setSource] = useState<string>("todas");
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState("");
   const session = useRef<Project | null>(null);
@@ -112,6 +123,7 @@ export function InstrumentPicker() {
       beginGesture();
       setQuery("");
       setFilter("todos");
+      setSource("todas");
     }
   }, [isOpen]);
 
@@ -145,7 +157,8 @@ export function InstrumentPicker() {
     const visible = entries.filter(({ preset }) => {
       const inTab =
         filter === "todos" || (kitMode ? groupOf(preset) === filter : preset.category === (filter as PresetCategory));
-      return inTab && (!q || `${preset.name} ${preset.description}`.toLowerCase().includes(q));
+      const fromSource = source === "todas" || preset.source === source;
+      return inTab && fromSource && (!q || `${preset.name} ${preset.description}`.toLowerCase().includes(q));
     });
     const order: string[] = kitMode ? GROUP_ORDER : (Object.keys(CATEGORY_LABELS) as PresetCategory[]);
     const keyOf = (e: Entry): string => (kitMode ? groupOf(e.preset) : e.preset.category);
@@ -156,7 +169,14 @@ export function InstrumentPicker() {
         items: visible.filter((e) => keyOf(e) === g),
       }))
       .filter((s) => s.items.length);
-  }, [entries, filter, query, kitMode]);
+  }, [entries, filter, query, kitMode, source]);
+  // Origens disponíveis: no kit, cada máquina; no instrumento, sintetizado × sampleado.
+  const sources = useMemo(() => {
+    const list = entries
+      .filter((e) => (kitMode ? !!e.preset.group : !e.preset.group))
+      .map((e) => e.preset.source ?? "");
+    return ["todas", ...new Set(list.filter(Boolean))];
+  }, [entries, kitMode]);
   const flat = sections.flatMap((s) => s.items);
 
   const applyToRow = (key: string) => {
@@ -366,6 +386,30 @@ export function InstrumentPicker() {
                   </label>
                 </div>
 
+                {sources.length > 2 && (
+                  <div className="flex flex-wrap items-center gap-1 px-6 pb-3">
+                    <span className="mr-1 text-[10px] font-semibold tracking-[0.14em] text-fg-faint uppercase">
+                      Origem
+                    </span>
+                    {sources.map((src) => (
+                      <button
+                        key={src}
+                        type="button"
+                        onClick={() => setSource(src)}
+                        className={cn(
+                          "h-6 rounded-md px-2 font-mono text-[10px] font-medium transition",
+                          source === src
+                            ? kitMode
+                              ? "bg-volt-500 text-ink-950"
+                              : "bg-uv-500 text-ink-950"
+                            : "bg-white/[0.04] text-fg-muted hover:text-fg",
+                        )}
+                      >
+                        {src === "todas" ? "Todas" : src}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div ref={grid} className="min-h-0 flex-1 overflow-y-auto px-6 pb-4 [scrollbar-width:thin]">
                   {sections.map((sec) => (
                     <section key={sec.id} className="mb-4">
